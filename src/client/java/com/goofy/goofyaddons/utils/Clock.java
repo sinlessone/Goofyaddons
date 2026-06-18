@@ -6,6 +6,7 @@ public class Clock {
     private boolean running = false;
 
     public void start(long ms) {
+        if (running) return;
         this.duration = ms;
         this.startMs = System.currentTimeMillis();
         this.running = true;
@@ -13,7 +14,11 @@ public class Clock {
 
     public boolean shouldFire() {
         if (!running) return false;
-        return System.currentTimeMillis() - startMs >= duration;
+        if (System.currentTimeMillis() - startMs >= duration) {
+            stop();
+            return true;
+        }
+        return false;
     }
 
     public void reset() {

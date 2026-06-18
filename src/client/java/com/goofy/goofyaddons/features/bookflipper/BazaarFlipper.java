@@ -24,12 +24,13 @@ public class BazaarFlipper {
     private List<FlipItem> flipItemsList = new ArrayList<>();
     private FlipCalculator flipCalculator = new FlipCalculator();
     private ScoreboardUtils scoreboardUtils = new ScoreboardUtils();
-    private final Queue<FlipItem> queue = new LinkedList<>();
+    private final Queue<Book> queue = new LinkedList<>();
     private InventoryScanner inventoryScanner = new InventoryScanner();
     private Minecraft minecraft = Minecraft.getInstance();
     private Book currentBook = null;
     private BazaarMonitor bazaarMonitor = new BazaarMonitor();
-    
+    private List<Book> buyOrderBook = new ArrayList<>();
+    private Map<Book, Integer> bookIntegerMap = new HashMap<>();
 
 
     public void onTick() {
@@ -41,19 +42,27 @@ public class BazaarFlipper {
             }
 
             case IDLE -> {
-
+                clock.start(30000);
+                if (!clock.shouldFire()) return;
+                for (Book book : buyOrderBook) {
+                    List<Book> outbidBookList = bazaarMonitor.isOutbid(false);
+                    if (outbidBookList.isEmpty()) return;
+                    buyOrderBook.remove(book);
+                    queue.poll();
+                }
             }
 
             case FETCHING -> {
+                if (queue.isEmpty()) {
+                    currentBook = queue.poll();
+                    state = State.BAZAAR_NAVIGATION;
+                }
+
                 if (!flipItemsList.isEmpty()) processData();
 
                 clock.start(5000);
                 if (clock.shouldFire() & flipItemsList.isEmpty()) flipItemsList = flipCalculator.getFlipItemsList();
 
-                FlipItem currentFlip = queue.poll();
-                if (currentFlip != null) {
-                    currentBook = currentFlip.book();
-                }
             }
 
             case BAZAAR_NAVIGATION -> {
@@ -91,6 +100,8 @@ public class BazaarFlipper {
                 if (containerCheck("Confirm buy order")) clock.start(250);
                 if (containerCheck("Confirm buy order") & clock.shouldFire()) {
                     InventoryUtils.clickSlot(13, false);
+                    buyOrderBook.add(currentBook);
+
                 }
             }
 
@@ -112,7 +123,7 @@ public class BazaarFlipper {
         double purse = scoreboardUtils.getPurse();
         for (FlipItem flipItems : flipItemsList) {
             if (purse < flipItems.totalCost()) continue;
-            queue.add(flipItems);
+            queue.add(flipItems.book());
         }
         if (!queue.isEmpty()) {
             state = State.BAZAAR_NAVIGATION;
@@ -126,12 +137,17 @@ public class BazaarFlipper {
     }
 
     private void handleSign() {
+        String amountToOrder = String.valueOf(currentBook.getQtyAmount(currentBook.level()));
         if (minecraft.screen instanceof AbstractSignEditScreen signScreen) {
+            if (bookIntegerMap.containsKey(currentBook)) {
+                amountToOrder = String.valueOf(bookIntegerMap.get(currentBook));
+            }
+
             try {
                 Field messagesField = AbstractSignEditScreen.class.getDeclaredField("messages");
                 messagesField.setAccessible(true);
                 String[] messages = (String[]) messagesField.get(signScreen);
-                messages[0] = String.valueOf(currentBook.getQtyAmount(currentBook.level()));
+                messages[0] = amountToOrder;
                 minecraft.setScreen(null);
             } catch (Exception e) {
                 e.printStackTrace();

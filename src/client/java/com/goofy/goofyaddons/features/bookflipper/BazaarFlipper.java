@@ -1,9 +1,6 @@
 package com.goofy.goofyaddons.features.bookflipper;
 
-import com.goofy.goofyaddons.features.bookflipper.helper.Book;
-import com.goofy.goofyaddons.features.bookflipper.helper.FlipCalculator;
-import com.goofy.goofyaddons.features.bookflipper.helper.FlipItem;
-import com.goofy.goofyaddons.features.bookflipper.helper.ItemMonitor;
+import com.goofy.goofyaddons.features.bookflipper.helper.*;
 import com.goofy.goofyaddons.utils.*;
 
 import java.lang.reflect.Field;
@@ -28,9 +25,11 @@ public class BazaarFlipper {
     private FlipCalculator flipCalculator = new FlipCalculator();
     private ScoreboardUtils scoreboardUtils = new ScoreboardUtils();
     private final Queue<FlipItem> queue = new LinkedList<>();
-    InventoryScanner inventoryScanner = new InventoryScanner();
-    Minecraft minecraft = Minecraft.getInstance();
+    private InventoryScanner inventoryScanner = new InventoryScanner();
+    private Minecraft minecraft = Minecraft.getInstance();
     private Book currentBook = null;
+    private BazaarMonitor bazaarMonitor = new BazaarMonitor();
+    
 
 
     public void onTick() {
@@ -39,6 +38,10 @@ public class BazaarFlipper {
         switch (state) {
             case START -> {
                 flipCalculator.Refresh();
+            }
+
+            case IDLE -> {
+
             }
 
             case FETCHING -> {
@@ -79,8 +82,19 @@ public class BazaarFlipper {
             }
 
             case PLACE_ORDER -> {
+                if (containerCheck("How much do you want to pay")) clock.start(250);
+                if (containerCheck("How much do you want to pay") & clock.shouldFire()) {
+                    bazaarMonitor.add(currentBook, inventoryScanner.getUnitPrice(12), false);
+                    InventoryUtils.clickSlot(12, false);
+                }
 
+                if (containerCheck("Confirm buy order")) clock.start(250);
+                if (containerCheck("Confirm buy order") & clock.shouldFire()) {
+                    InventoryUtils.clickSlot(13, false);
+                }
             }
+
+
         }
 
     }

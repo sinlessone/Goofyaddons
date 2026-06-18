@@ -41,8 +41,13 @@ public class BazaarMonitor {
     }
 
     public List<Book> isOutbid(boolean isSellOrder) {
-        if (isSellOrder) return getOutbidSellOrderBookList;
-        return getOutbidBuyOrderBookList;
+        if (!isSellOrder) {
+            getOutbidBuyOrderBookList.clear();
+            return getOutbidBuyOrderBookList;
+        }
+
+        getOutbidSellOrderBookList.clear();
+        return getOutbidSellOrderBookList;
     }
 
     public void onTick() {
@@ -95,7 +100,7 @@ public class BazaarMonitor {
 
     }
 
-    public void outbidScanner(JsonObject products, BazaarMonitorItem bazaarMonitorItem, boolean isSellOrder) {
+    private void outbidScanner(JsonObject products, BazaarMonitorItem bazaarMonitorItem, boolean isSellOrder) {
         JsonObject productID = products.getAsJsonObject(bazaarMonitorItem.book.getLevel(bazaarMonitorItem.book.level()));
         if (isSellOrder) {
             JsonObject entry = productID.getAsJsonArray("sell_summary").get(0).getAsJsonObject();

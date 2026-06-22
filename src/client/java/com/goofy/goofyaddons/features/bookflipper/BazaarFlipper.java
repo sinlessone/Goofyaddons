@@ -61,6 +61,9 @@ public class BazaarFlipper {
             }
 
             case IDLE -> {
+
+
+                if (!booksToStore.isEmpty()) state = State.STORE;
                 clock.start(15000);
                 if (!clock.shouldFire()) {
                     for (Book book : buyOrderBook) {
@@ -139,7 +142,10 @@ public class BazaarFlipper {
 
                     if (containerCheck("Bazaar")) clock.start(250);
                     if (containerCheck("Bazaar") & clock.shouldFire()) {
-                        if (outbidBuyOrderBook.isEmpty()) state = State.IDLE;
+                        if (outbidBuyOrderBook.isEmpty()) {
+                            minecraft.player.closeContainer();
+                            state = State.IDLE;
+                        }
 
 
                         List<Integer> slots = inventoryScanner.findContainer("BUY " + outbidBuyOrderBook.getFirst()
@@ -170,7 +176,19 @@ public class BazaarFlipper {
             }
 
             case STORE -> {
+                if (!containerCheck("Ender Chest")) clock.start(150);
+                if (!containerCheck("Ender Chest") & clock.shouldFire()) openEnderChest();
 
+                if (containerCheck("Ender Chest")) clock.start(250);
+                if (containerCheck("Ender Chest") & clock.shouldFire()) {
+                    if (booksToStore.isEmpty()) {
+                        minecraft.player.closeContainer();
+                        state = State.IDLE;
+                    }
+                    int slot = inventoryScanner.findLoreInv(booksToStore.getFirst().getRomanLevel(booksToStore.getFirst().level())).getFirst();
+                    InventoryUtils.clickSlot(slot, true);
+                    booksToStore.removeFirst();
+                }
             }
 
 
@@ -203,6 +221,16 @@ public class BazaarFlipper {
     private void openBazaar(String name) {
         if (containerCheck("bazaar")) return;
         minecraft.player.connection.sendCommand(name);
+    }
+
+    private void openAnvil() {
+        if (containerCheck("Anvil")) return;
+        minecraft.player.connection.sendCommand("Anvil");
+    }
+
+    private void openEnderChest() {
+        if (containerCheck("Ender Chest")) return;
+        minecraft.player.connection.sendCommand("ec");
     }
 
     private void handleSign() {

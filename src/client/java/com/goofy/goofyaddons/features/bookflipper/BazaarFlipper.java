@@ -33,7 +33,9 @@ public class BazaarFlipper {
         OUTBID,
         STORE,
         ANVIL,
-        COMBINE
+        COMBINE,
+        SELL,
+        REPLACE_SELL
     }
     private Clock clock = new Clock();
     private State state = State.IDLE;
@@ -52,10 +54,12 @@ public class BazaarFlipper {
     private List<Book> booksToStore = new ArrayList<>();
     private List<Book> completedList = new ArrayList<>();
     private int counter = 0;
+    private boolean clickedOnce = false;
 
 
 
     public void onTick() {
+        bazaarMonitor.onTick();
         lastStateCheck();
 
         switch (state) {
@@ -218,15 +222,63 @@ public class BazaarFlipper {
                 if (!containerCheck("Anvil")) clock.start(250);
                 if (!containerCheck("Anvil") & clock.shouldFire()) openAnvil();
 
-                if (containerCheck("Anvil")) clock.start(250);
-                if (containerCheck("Anvil") & clock.shouldFire()) {
-                    List<Integer> stageOneBookList = new ArrayList<>();
-                    List<Integer> stageTwoBookList = new ArrayList<>();
-                    List<Integer> stageThreeBookList = new ArrayList<>();
-                    List<Integer> stageFourBookList = new ArrayList<>();
-                    List<Integer> stageFiveBookList = new ArrayList<>();
+                if (containerCheck("Anvil") & counter != 2) clock.start(250);
+                if (containerCheck("Anvil") & clock.shouldFire() & counter != 2) {
+                    if (completedList.isEmpty()) state = State.SELL;
+                    List<Integer> stageOneBookList;
+                    List<Integer> stageTwoBookList;
+                    List<Integer> stageThreeBookList;
+                    List<Integer> stageFourBookList;
+                    List<Integer> stageFiveBookList;
+
+                    stageOneBookList = inventoryScanner.findLoreInv(completedList.getFirst().getRomanLevel(1));
+                    stageTwoBookList = inventoryScanner.findLoreInv(completedList.getFirst().getRomanLevel(2));
+                    stageThreeBookList = inventoryScanner.findLoreInv(completedList.getFirst().getRomanLevel(3));
+                    stageFourBookList = inventoryScanner.findLoreInv(completedList.getFirst().getRomanLevel(4));
+                    stageFiveBookList = inventoryScanner.findLoreInv(completedList.getFirst().getRomanLevel(5));
+
+                    if (!stageOneBookList.isEmpty()) {
+                        InventoryUtils.clickSlot(stageOneBookList.getFirst(), true);
+                        counter++;
+                        return;
+                    }
+
+                    if (!stageTwoBookList.isEmpty()) {
+                        InventoryUtils.clickSlot(stageTwoBookList.getFirst(), true);
+                        counter++;
+                        return;
+                    }
+
+                    if (!stageThreeBookList.isEmpty()) {
+                        InventoryUtils.clickSlot(stageThreeBookList.getFirst(), true);
+                        counter++;
+                        return;
+                    }
+                    if (!stageFourBookList.isEmpty()) {
+                        InventoryUtils.clickSlot(stageFourBookList.getFirst(), true);
+                        counter++;
+                        return;
+                    }
+                    if (!stageFiveBookList.isEmpty()) {
+                        InventoryUtils.clickSlot(stageFiveBookList.getFirst(), true);
+                        completedList.removeFirst();
+                        return;
+                    }
 
                 }
+
+                if (counter == 2) clock.start(250);
+                if (counter == 2 & clock.shouldFire()) {
+                    InventoryUtils.clickSlot(22, false);
+                    if (clickedOnce) {
+                        counter = 0;
+                        clickedOnce = false;
+                        return;
+                    }
+                    clickedOnce = true;
+                }
+
+
             }
 
 

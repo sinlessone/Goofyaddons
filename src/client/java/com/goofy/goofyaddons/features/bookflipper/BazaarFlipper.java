@@ -15,6 +15,7 @@ import java.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
 import net.minecraft.client.gui.screens.inventory.SignEditScreen;
+import org.jetbrains.annotations.UnknownNullability;
 
 
 public class BazaarFlipper {
@@ -434,6 +435,8 @@ public class BazaarFlipper {
                 if (containerCheck("Bazaar")) clock.start(1000);
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
 
+
+
                     if (bookList.isEmpty()) {
                         debug("SELL: bookstoSell empty, switching to IDLE");
                         state = State.FETCHING;
@@ -441,8 +444,8 @@ public class BazaarFlipper {
                         return;
                     }
 
-                    Set<String> seen = new HashSet<>();
-                    bookList.removeIf(book -> !seen.add(book.name()));
+
+
                     for (Book book : bookList) {
                         slots.addAll(inventoryScanner.findContainer("SELL " + book.getRomanLevel(5)));
                     }
@@ -486,7 +489,7 @@ public class BazaarFlipper {
                 if (containerCheck("Confirm") && clock.shouldFire()) {
                     debug("SELL: confirm prompt, clicking slot 13 and removing " + bookList.getFirst() + " from sell list");
                     InventoryUtils.clickSlot(13, false);
-                    task.remove(bookList.getFirst());
+                    removeDuplicateBooks(task);
                     bookList.removeFirst();
 
                 }
@@ -520,6 +523,18 @@ public class BazaarFlipper {
             if (entry.getValue().getBookState() == target) return entry.getKey();
         }
         return null;
+    }
+
+    private void removeDuplicateBooks(Map<Book, Task> tasks) {
+        Map<String, Integer> counts = new HashMap<>();
+
+        for (Book book : tasks.keySet()) {
+            counts.merge(book.name(), 1, Integer::sum);
+        }
+
+        tasks.entrySet().removeIf(entry ->
+                counts.get(entry.getKey().name()) > 1
+        );
     }
 
     private void processData() {

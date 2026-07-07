@@ -222,7 +222,10 @@ public class BazaarFlipper {
                 if (containerCheck("Confirm") && clock.shouldFire()) {
                     debug("PLACE_ORDER: confirming buy order for " + activeBook);
                     InventoryUtils.clickSlot(13, false);
-                    if (editIfStateBook(activeBook, BookState.SUB_STORE, BookState.STORE)) return;
+                    if (editIfStateBook(activeBook, BookState.SUB_STORE, BookState.STORE)) {
+                        state = State.IDLE;
+                        return;
+                    }
                     editStateBook(activeBook, BookState.BUY_ORDER);
                     state = State.IDLE;
 

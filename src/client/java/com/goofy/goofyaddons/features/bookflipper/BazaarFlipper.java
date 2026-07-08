@@ -1,5 +1,6 @@
 package com.goofy.goofyaddons.features.bookflipper;
 
+import com.goofy.goofyaddons.event.ChatHook;
 import com.goofy.goofyaddons.features.bookflipper.helper.BazaarMonitor;
 import com.goofy.goofyaddons.features.bookflipper.helper.Book;
 import com.goofy.goofyaddons.features.bookflipper.helper.FlipCalculator;
@@ -60,6 +61,8 @@ public class BazaarFlipper {
     private boolean clickedOnce = false;
     private Book activeBook = null;
 
+
+
     private final Map<Book, Task> task = new LinkedHashMap<>();
 
     private void debug(String msg) {
@@ -73,6 +76,10 @@ public class BazaarFlipper {
         }
         enabled = true;
         state = State.START;
+    }
+
+    public BazaarFlipper() {
+        ChatHook.onMessage("filled", this::handleFilledMessage);
     }
 
     public void stop() {
@@ -523,6 +530,8 @@ public class BazaarFlipper {
         }
     }
 
+
+
     private void lastStateCheck() {
         if (state != lastState) {
             System.out.println("[BazaarFlipper] state changed: " + lastState + " -> " + state);
@@ -631,6 +640,20 @@ public class BazaarFlipper {
     private boolean isContainerOpen() {
         if (minecraft.screen == null) return false;
         return true;
+    }
+
+    private void handleFilledMessage(String string) {
+        List<Book> booksInState = booksInState(BookState.BUY_ORDER);
+        String stripped = string
+                .replace("[Bazaar] Your Buy Order for ", "")
+                .replace(" was filled!", "");
+
+        stripped = stripped.substring(stripped.indexOf(' ') + 1);
+
+        for (Book book : booksInState) {
+            if (!stripped.equals(book.getRomanLevel(book.level()))) continue;
+            editStateBook(book, BookState.OUTBID);
+        }
     }
 
 

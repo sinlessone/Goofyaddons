@@ -1,5 +1,6 @@
 package com.goofy.goofyaddons.features.bookflipper.helper;
 
+import com.goofy.goofyaddons.config.GoofyConfig;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -12,18 +13,9 @@ import java.util.*;
 public class FlipCalculator {
     private boolean running = false;
     private HttpClient client = HttpClient.newHttpClient();
-    private final List<Book> books = new ArrayList<>();
     private final Map<String, BazaarData> bazaar = new HashMap<>();
     public final List<FlipItem> flipItemsList = new ArrayList<>();
 
-    public FlipCalculator() {
-        books.add(new Book("ENCHANTMENT_ULTIMATE_WISE", 1, 5, "Ultimate Wise"));
-        books.add(new Book("ENCHANTMENT_ULTIMATE_WISE", 2, 5, "Ultimate Wise"));
-        // books.add(new Book("ENCHANTMENT_ULTIMATE_WISDOM", 1, 5, "Wisdom"));
-        // books.add(new Book("ENCHANTMENT_ULTIMATE_WISDOM", 2, 5, "Wisdom"));
-        // books.add(new Book("ENCHANTMENT_ULTIMATE_LAST_STAND", 1, 5, "Last Stand"));
-        // books.add(new Book("ENCHANTMENT_ULTIMATE_LAST_STAND", 2, 5, "Last Stand"));
-    }
 
 
     public void Refresh() {
@@ -47,7 +39,7 @@ public class FlipCalculator {
                     JsonObject products =
                             root.getAsJsonObject("products");
 
-                    for (Book book : this.books) {
+                    for (Book book : GoofyConfig.INSTANCE.books) {
 
                         loadProduct(products, book.getLevel(book.level()));
                         loadProduct(products, book.getLevel(book.sellLevel()));
@@ -77,7 +69,7 @@ public class FlipCalculator {
 
         flipItemsList.clear();
 
-        for (Book book : books) {
+        for (Book book : GoofyConfig.INSTANCE.books) {
 
             BazaarData buyData = bazaar.get(book.getLevel(book.level()));
             BazaarData sellData = bazaar.get(book.getLevel(book.sellLevel()));

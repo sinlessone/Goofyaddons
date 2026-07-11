@@ -18,8 +18,8 @@ public class GoofyConfig {
     public GoofyConfig() {
         books.add(new Book("ENCHANTMENT_ULTIMATE_WISE", 1, 5, "Ultimate Wise"));
         books.add(new Book("ENCHANTMENT_ULTIMATE_WISE", 2, 5, "Ultimate Wise"));
-        books.add(new Book("ENCHANTMENT_ULTIMATE_WISDOM", 1, 5, "Wisdom"));
-        books.add(new Book("ENCHANTMENT_ULTIMATE_WISDOM", 2, 5, "Wisdom"));
+        // books.add(new Book("ENCHANTMENT_ULTIMATE_WISDOM", 1, 5, "Wisdom"));
+        // books.add(new Book("ENCHANTMENT_ULTIMATE_WISDOM", 2, 5, "Wisdom"));
         // books.add(new Book("ENCHANTMENT_ULTIMATE_LAST_STAND", 1, 5, "Last Stand"));
         // books.add(new Book("ENCHANTMENT_ULTIMATE_LAST_STAND", 2, 5, "Last Stand"));
     }

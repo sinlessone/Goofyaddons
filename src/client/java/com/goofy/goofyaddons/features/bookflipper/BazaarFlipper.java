@@ -581,6 +581,7 @@ public class BazaarFlipper {
                         }
 
                         state = State.FETCHING;
+                        minecraft.player.closeContainer();
                         return;
 
                     }

@@ -229,6 +229,7 @@ public class BazaarFlipper {
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
                     List<Integer> slots = inventoryScanner.findContainer(activeBook.getRomanLevel(activeBook.level()));
                     debug("BAZAAR_NAVIGATION: Bazaar open, clicking slot " + slots + " for " + activeBook.getRomanLevel(activeBook.level()));
+                    if (slots.isEmpty()) return;
                     InventoryUtils.clickSlot(slots.getFirst(), false);
                 }
 

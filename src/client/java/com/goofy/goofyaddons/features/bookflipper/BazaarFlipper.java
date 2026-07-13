@@ -87,7 +87,7 @@ public class BazaarFlipper {
 
     public BazaarFlipper() {
         ChatHook.onMessage("filled", this::handleFilledMessage);
-        ChatHook.onMessage("claimed", this::handleClaimedMessage);
+        ChatHook.onMessage("Claimed", this::handleClaimedMessage);
     }
 
     public void stop() {

@@ -441,7 +441,6 @@ public class BazaarFlipper {
 
             case COMBINE -> {
 
-
                 Book bookToHandle = firstBookInState(BookState.COMBINE);
 
                 if (bookToHandle == null) {
@@ -450,16 +449,19 @@ public class BazaarFlipper {
                     return;
                 }
 
-                int level = task.get(bookToHandle).getBooktoCombine();
-
+                int level = 0;
+                for (int i = bookToHandle.level(); i < bookToHandle.sellLevel(); i++) {
+                    if (inventoryScanner.locate(bookToHandle.getRomanLevel(i)).size() >= 2) {
+                        level = i;
+                        break;
+                    }
+                }
 
                 if (!containerCheck("Anvil")) clock.start(randomizer());
                 if (!containerCheck("Anvil") && clock.shouldFire()) {
                     debug("COMBINE: no anvil open, opening it");
                     openAnvil();
                 }
-
-
 
                 if (containerCheck("Anvil") && counter < 2) clock.start(randomizer());
                 if (containerCheck("Anvil") && counter < 2 && clock.shouldFire()) {
@@ -473,25 +475,16 @@ public class BazaarFlipper {
                     if (!book.isEmpty()) {
                         counter++;
                         InventoryUtils.clickSlot(book.getFirst(), true);
+                        return;
                     }
                 }
 
                 if (counter == 2) clock.start(randomizer());
                 if (counter == 2 && clock.shouldFire()) {
-                    List<Integer> books = inventoryScanner.findLoreInv(bookToHandle.getRomanLevel(level + 1));
-                    int counterForBook = books.size();
-                    debug("COMBINE: counter==2, clicking anvil output slot 22, clickedOnce=" + clickedOnce);
+                    debug("COMBINE: counter==2, clicking anvil output slot 22 with normal click");
                     InventoryUtils.clickSlot(22, false);
-                    if (clickedOnce) {
-                        debug("COMBINE: second click done, resetting counter and clickedOnce");
-                        counter = 0;
-                        clickedOnce = false;
-                        if (inventoryScanner.locate(bookToHandle.getRomanLevel(level + 1)).size() > counterForBook) {
-                            task.get(bookToHandle).increaseCounter();
-                        }
-                        return;
-                    }
-                    clickedOnce = true;
+                    counter = 0;
+                    return;
                 }
             }
 

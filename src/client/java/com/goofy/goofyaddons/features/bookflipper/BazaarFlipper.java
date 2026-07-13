@@ -26,7 +26,6 @@ public class BazaarFlipper {
         IDLE,
         FETCHING,
         BAZAAR_NAVIGATION,
-        PLACE_ORDER,
         OUTBID,
         STORE,
         ANVIL,
@@ -255,13 +254,6 @@ public class BazaarFlipper {
                     handleSign();
                 }
 
-                if (containerCheck("How much do you want to pay")) {
-                    debug("BAZAAR_NAVIGATION: price prompt open, switching to PLACE_ORDER");
-                    state = State.PLACE_ORDER;
-                }
-            }
-
-            case PLACE_ORDER -> {
                 if (containerCheck("How much do you want to pay")) clock.start(randomizer());
                 if (containerCheck("How much do you want to pay") && clock.shouldFire()) {
                     debug("PLACE_ORDER: clicking slot 12 to confirm price, book=" + activeBook);
@@ -282,6 +274,7 @@ public class BazaarFlipper {
                     state = State.IDLE;
 
                 }
+
             }
 
             case OUTBID -> {

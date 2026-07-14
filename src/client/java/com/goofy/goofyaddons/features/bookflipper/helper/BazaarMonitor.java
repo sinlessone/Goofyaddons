@@ -27,10 +27,7 @@ public class BazaarMonitor {
     }
 
     public void finish(Book book) {
-        monitorItemList.removeIf(bazaarMonitorItem -> {
-            if (monitorItemList.contains(book)) return true;
-            return false;
-        });
+        monitorItemList.removeIf(b -> b.book.equals(book));
     }
 
     public void reset() {

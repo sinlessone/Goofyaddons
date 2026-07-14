@@ -72,7 +72,7 @@ public class BazaarFlipper {
 
     private void debug(String msg) {
         if (!debugMode) return;
-        debug("[" + state + "] " + msg);
+        ChatUtils.debugMessage("[" + state + "] " + msg);
     }
 
     private void dumpTasks() {

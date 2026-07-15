@@ -154,5 +154,32 @@ public class InventoryScanner {
         return amount;
     }
 
+    public int getEmptyContainerSlots() {
+        int amount = 0;
+        AbstractContainerMenu menu = minecraft.player.containerMenu;
+
+        for (Slot slot : menu.slots) {
+            if (slot.hasItem()) continue;
+            amount++;
+        }
+
+        return amount;
+    }
+
+    public boolean findMisMatch(String string) {
+        List<Integer> slots = new ArrayList<>();
+        AbstractContainerMenu menu = minecraft.player.containerMenu;
+        int end = menu.slots.size() - 36;
+        for (int i = 0; i < end; i++) {
+            ItemStack item = menu.slots.get(i).getItem();
+            if (item.isEmpty()) continue;
+            ItemLore lore = item.get(DataComponents.LORE);
+            if (lore == null || !lore.lines().stream().anyMatch(l -> l.getString().equals(string))) continue;
+            slots.add(i);
+        }
+        if (getEmptyContainerSlots() == 0 && slots.size() == 1) return true;
+        return false;
+    }
+
 
 }

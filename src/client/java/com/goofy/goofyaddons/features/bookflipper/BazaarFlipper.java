@@ -504,6 +504,10 @@ public class BazaarFlipper {
                     List<Integer> book = inventoryScanner.findLoreInv(bookToHandle.getRomanLevel(level));
 
                     if (!book.isEmpty()) {
+                        if (inventoryScanner.findMisMatch(bookToHandle.getRomanLevel(level))) {
+                            minecraft.player.closeContainer();
+                            return;
+                        }
                         counter++;
                         InventoryUtils.clickSlot(book.getFirst(), true);
                         return;

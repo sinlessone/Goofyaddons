@@ -771,6 +771,7 @@ public class BazaarFlipper {
         stateBooks.addAll(booksInState(BookState.SELL));
 
         for (Book book : stateBooks) {
+            if (task.get(book).getAmountToOrder() < 0) continue;
             counts.merge(book.name(), 1, Integer::sum);
         }
 

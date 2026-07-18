@@ -157,8 +157,11 @@ public class InventoryScanner {
     public int getEmptyContainerSlots() {
         int amount = 0;
         AbstractContainerMenu menu = minecraft.player.containerMenu;
+        Inventory playerInv = minecraft.player.getInventory();
 
         for (Slot slot : menu.slots) {
+            if (slot.container == playerInv) continue;
+
             if (slot.hasItem()) continue;
             amount++;
         }

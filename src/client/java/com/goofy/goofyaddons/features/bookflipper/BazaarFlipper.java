@@ -2,22 +2,21 @@ package com.goofy.goofyaddons.features.bookflipper;
 
 import com.goofy.goofyaddons.config.GoofyConfig;
 import com.goofy.goofyaddons.event.ChatHook;
+import com.goofy.goofyaddons.features.Feature;
 import com.goofy.goofyaddons.features.bookflipper.helper.BazaarMonitor;
 import com.goofy.goofyaddons.features.bookflipper.helper.Book;
 import com.goofy.goofyaddons.features.bookflipper.helper.FlipCalculator;
 import com.goofy.goofyaddons.features.bookflipper.helper.FlipItem;
 import com.goofy.goofyaddons.utils.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
+import net.minecraft.client.gui.screens.inventory.SignEditScreen;
 
 import java.lang.reflect.Field;
 import java.util.*;
 
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
-import net.minecraft.client.gui.screens.inventory.SignEditScreen;
-import java.util.SplittableRandom;
 
-
-public class BazaarFlipper {
+public class BazaarFlipper implements Feature {
     private enum State {
         START,
         STARTUP_CHECK,
@@ -64,7 +63,6 @@ public class BazaarFlipper {
     private boolean didRemoveOrder = false;
     private boolean claimedItems = false;
     private boolean didReceiveItems = false;
-    public boolean debugMode = false;
     private boolean firstStartUp = false;
     private int counterBazaar = 0;
     private boolean useSecondPage = false;
@@ -74,7 +72,6 @@ public class BazaarFlipper {
     private final Map<Book, Task> task = new LinkedHashMap<>();
 
     private void debug(String msg) {
-        if (!debugMode) return;
         ChatUtils.debugMessage("[" + state + "] " + msg);
     }
 
@@ -92,6 +89,8 @@ public class BazaarFlipper {
         debug("---------------------");
     }
 
+
+    @Override
     public void start() {
         ChatUtils.clientMessage("BazaarFlipper: Started");
         if (minecraft.screen != null) {
@@ -109,6 +108,12 @@ public class BazaarFlipper {
         bazaarMonitor.hook(this::handleOutbid);
     }
 
+    @Override
+    public String name() {
+        return "BazaarFlipper";
+    }
+
+    @Override
     public void stop() {
 
         ChatUtils.clientMessage("BazaarFlipper: Stopped");
@@ -131,6 +136,17 @@ public class BazaarFlipper {
 
     }
 
+    @Override
+    public void pause() {
+        enabled = false;
+    }
+
+    @Override
+    public void resume() {
+        enabled = true;
+    }
+
+    @Override
     public void onTick() {
 
         if (!enabled) return;
@@ -175,7 +191,6 @@ public class BazaarFlipper {
                         } else {
                             task.get(book).setShouldCheckSecondPage(true);
                         }
-
 
 
                         if (task.get(book).isCompleted()) {
@@ -255,7 +270,6 @@ public class BazaarFlipper {
                 }
 
 
-
                 List<Book> booksToAnvil = booksInState(BookState.ANVIL);
                 if (!booksToAnvil.isEmpty()) {
                     isInventoryFull = false;
@@ -270,8 +284,7 @@ public class BazaarFlipper {
                     }
                     if (shouldCheck) {
                         state = State.ANVIL;
-                    }
-                    else {
+                    } else {
                         state = State.COMBINE;
                     }
 
@@ -636,7 +649,7 @@ public class BazaarFlipper {
                         List<Integer> slot = inventoryScanner.findLoreInv(bookList.getFirst().getRomanLevel(bookList.getFirst().sellLevel()));
                         if (slot.isEmpty()) {
                             bookList.removeFirst();
-                            debug("slot is empty, removed book from booksToSell and return" );
+                            debug("slot is empty, removed book from booksToSell and return");
                             return;
                         }
                         InventoryUtils.clickSlot(slot.getFirst(), false);
@@ -748,8 +761,6 @@ public class BazaarFlipper {
                     state = State.FETCHING;
 
                 }
-
-
 
 
             }
@@ -1007,9 +1018,13 @@ public class BazaarFlipper {
             return inEnderChest > 0;
         }
 
-        private boolean isCompleted() { return getAmountToOrder() <= 0; }
+        private boolean isCompleted() {
+            return getAmountToOrder() <= 0;
+        }
 
-        private boolean shouldStore() { return inInventory > 0; }
+        private boolean shouldStore() {
+            return inInventory > 0;
+        }
 
         private boolean isEarlyStore() {
             return earlyStore;

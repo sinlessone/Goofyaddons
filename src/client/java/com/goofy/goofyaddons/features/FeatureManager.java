@@ -9,7 +9,7 @@ public class FeatureManager {
     List<Feature> featureList = new ArrayList<>();
     private Feature feature = null;
 
-    public static FeatureManager INSTANCE;
+    public static final FeatureManager INSTANCE = new FeatureManager();
 
     private FeatureManager() {
         featureList.add(new BazaarFlipper());

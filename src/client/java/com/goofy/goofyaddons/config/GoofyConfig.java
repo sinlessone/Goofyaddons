@@ -37,6 +37,8 @@ public class GoofyConfig {
     public int speedModeDelay = 100;
     public int minActionDelay = 100;
     public int maxActionDelay = 500;
+    public String firstPage = "ec";
+    public String secondPage = "ec 2";
 
 
     public static void load() {
@@ -66,8 +68,6 @@ public class GoofyConfig {
             e.printStackTrace();
         }
     }
-
-
 
 
 }

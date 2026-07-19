@@ -883,10 +883,10 @@ public class BazaarFlipper implements Feature {
         if (containerCheck("Ender Chest")) return;
         debug("openEnderChest");
         if (useSecondPage) {
-            minecraft.player.connection.sendCommand("ec 2");
+            minecraft.player.connection.sendCommand(GoofyConfig.INSTANCE.secondPage);
             return;
         }
-        minecraft.player.connection.sendCommand("ec");
+        minecraft.player.connection.sendCommand(GoofyConfig.INSTANCE.firstPage);
     }
 
     private void handleSign() {

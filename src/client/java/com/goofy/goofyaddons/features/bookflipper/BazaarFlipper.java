@@ -266,6 +266,7 @@ public class BazaarFlipper implements Feature {
 
                     state = State.STORE;
                     isInventoryFull = false;
+                    useSecondPage = false;
                     return;
                 }
 

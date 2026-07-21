@@ -174,8 +174,8 @@ public class BazaarFlipper implements Feature {
                     openEnderChest(false);
                 }
 
-                if (containerCheck("Ender")) clock.start(randomizer());
-                if (containerCheck("Ender") && clock.shouldFire()) {
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(randomizer());
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack") && clock.shouldFire()) {
                     List<Book> bookList = new ArrayList<>();
                     bookList.addAll(booksInState(BookState.SELECTED));
 

@@ -174,8 +174,8 @@ public class BazaarFlipper implements Feature {
                     openEnderChest(false);
                 }
 
-                if (containerCheck("Ender")) clock.start(randomizer());
-                if (containerCheck("Ender") && clock.shouldFire()) {
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(randomizer());
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack") && clock.shouldFire()) {
                     List<Book> bookList = new ArrayList<>();
                     bookList.addAll(booksInState(BookState.SELECTED));
 
@@ -908,10 +908,11 @@ public class BazaarFlipper implements Feature {
     }
 
 
-    private boolean containerCheck(String name) {
-        if (minecraft.screen == null) return false;
-        return minecraft.screen.getTitle().toString().contains(name);
-    }
+private boolean containerCheck(String name) {
+    if (minecraft.screen == null) return false;
+    String title = minecraft.screen.getTitle().getString();
+    return title.toLowerCase().contains(name.toLowerCase());
+}
 
     private boolean isContainerOpen() {
         if (minecraft.screen == null) return false;

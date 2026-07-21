@@ -910,7 +910,6 @@ public class BazaarFlipper implements Feature {
 
 private boolean containerCheck(String name) {
     if (minecraft.screen == null) return false;
-    // .getString() gets the actual text rendered in the GUI
     String title = minecraft.screen.getTitle().getString();
     return title.toLowerCase().contains(name.toLowerCase());
 }

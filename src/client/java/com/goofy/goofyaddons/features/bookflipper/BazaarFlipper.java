@@ -1,7 +1,7 @@
 package com.goofy.goofyaddons.features.bookflipper;
 
 import com.goofy.goofyaddons.config.GoofyConfig;
-import com.go.ofy.goofyaddons.event.ChatHook;
+import com.goofy.goofyaddons.event.ChatHook;
 import com.goofy.goofyaddons.features.Feature;
 import com.goofy.goofyaddons.features.bookflipper.helper.BazaarMonitor;
 import com.goofy.goofyaddons.features.bookflipper.helper.Book;

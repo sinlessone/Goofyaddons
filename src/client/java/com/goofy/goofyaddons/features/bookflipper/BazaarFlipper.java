@@ -174,13 +174,13 @@ public class BazaarFlipper implements Feature {
  openEnderChest(false);
  }
 
- if ( (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(random());
- if ( (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) && clock.shouldFire()) {
+ if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(randomizer());
+ if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack") && clock.shouldFire()) {
  List bookList = new ArrayList<>();
  bookList.addAll(booksInState(BookState.SELECTED));
 
  for (Book book : bookList) {
- debug("BazaarFFlipper: [STARTUP_CHECK] book: " + book.name());
+ debug("BazaarFlipper: [STARTUP_CHECK] book: " + book.name());
  List size = inventoryScanner.findLoreContainer(book.getRomanLevel(book.level()));
  debug("BazaarFlipper: [STARTUP_CHECK] Found book: " + book.name() + " Amount: " + size.size() + "In Container");
  task.get(book).addInEnderChest(size.size());
@@ -367,13 +367,21 @@ public class BazaarFlipper implements Feature {
  // the "Claimed" chat message is missed.
  if (claimedItems && !containerCheck("Order")) {
  Book claimedBook = firstBookInState(BookState.OUTBID);
- if (claimedBook != null) {
+ if (claimedBook == null) {
+ // task vanished while a claim was pending; stop waiting and continue
+ claimedItems = false;
+ didReceiveItems = false;
+ claimWaitTicks = 0;
+ } else {
  claimWaitTicks++;
  int actualInv = inventoryScanner.findLoreInv(claimedBook.getRomanLevel(claimedBook.level())).size();
  int expected = task.get(claimedBook).inInventory;
  if (didReceiveItems || actualInv >= expected || claimWaitTicks >= MAX_CLAIM_WAIT) {
- // Reconc back to reality so the counters never drift.
- task.get(claimedBook).setInInventory(actualInv);
+ // Confirmed via chat message, via the items actually appearing in the
+ // inventory, or via timeout. Never shrink the counter below what the
+ // order said we claimed (Math.max) so an item that is still rendering
+ // can't cause a phantom re-order; the ANVIL reconcile corrects later.
+ task.get(claimedBook).setInInventory(Math.max(expected, actualInv));
  claimedItems = false;
  didReceiveItems = false;
  claimWaitTicks = 0;
@@ -459,7 +467,6 @@ public class BazaarFlipper implements Feature {
  InventoryUtils.clickSlot(slot.getFirst(), false);
 
  }
-
  }
 
  case STORE -> {
@@ -828,7 +835,7 @@ public class BazaarFlipper implements Feature {
  }
  BookState old = t.getBookState();
  t.setBookState(target);
- debug("Book state changed: " + book + | " + old + " -> " + target
+ debug("Book state changed: " + book + " | " + old + " -> " + target
  + " remaining=" + t.getAmountToOrder()
  + " inv=" + t.inInventory
  + " ec=" + t.inEnderChest);
@@ -995,7 +1002,7 @@ public class BazaarFlipper implements Feature {
  int ec = inventoryScanner.findLoreContainer(book.getRomanLevel(book.level())).size();
  t.setInEnderChest(ec);
  }
- debug("reconcilied " + book + " inv=" + inv + " ec=" + t.inEnderChest);
+ debug("reconciled " + book + " inv=" + inv + " ec=" + t.inEnderChest);
  }
 
  private class Task {

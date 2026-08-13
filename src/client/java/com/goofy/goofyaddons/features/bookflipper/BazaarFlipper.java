@@ -45,7 +45,7 @@ public class BazaarFlipper implements Feature {
  private Clock clock = new Clock();
  private State state = State.IDLE;
  private State lastState = null;
- private List flipItemsList = new ArrayList<>();
+ private List<FlipItem> flipItemsList = new ArrayList<>();
  private FlipCalculator flipCalculator = new FlipCalculator();
  private ScoreboardUtils scoreboardUtils = new ScoreboardUtils();
  private InventoryScanner inventoryScanner = new InventoryScanner();
@@ -55,7 +55,7 @@ public class BazaarFlipper implements Feature {
  private boolean clickedOnce = false;
  private Book activeBook = null;
  private SplittableRandom splittableRandom = new SplittableRandom();
- private List sellOrderName = new ArrayList<>();
+ private List<String> sellOrderName = new ArrayList<>();
  private boolean notEnoughCash = false;
  private boolean isInventoryFull = false;
  private boolean didRemoveOrder = false;
@@ -176,12 +176,12 @@ public class BazaarFlipper implements Feature {
 
  if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(randomizer());
  if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack") && clock.shouldFire()) {
- List bookList = new ArrayList<>();
+ List<Book> bookList = new ArrayList<>();
  bookList.addAll(booksInState(BookState.SELECTED));
 
  for (Book book : bookList) {
  debug("BazaarFlipper: [STARTUP_CHECK] book: " + book.name());
- List size = inventoryScanner.findLoreContainer(book.getRomanLevel(book.level()));
+ List<Integer> size = inventoryScanner.findLoreContainer(book.getRomanLevel(book.level()));
  debug("BazaarFlipper: [STARTUP_CHECK] Found book: " + book.name() + " Amount: " + size.size() + "In Container");
  task.get(book).addInEnderChest(size.size());
  if (!secondPageCheck) {
@@ -270,7 +270,7 @@ public class BazaarFlipper implements Feature {
  return;
  }
 
- List booksToAnvil = booksInState(BookState.ANVIL);
+ List<Book> booksToAnvil = booksInState(BookState.ANVIL);
  if (!booksToAnvil.isEmpty()) {
  isInventoryFull = false;
  boolean shouldCheck = false;
@@ -312,7 +312,7 @@ public class BazaarFlipper implements Feature {
 
  if (containerCheck("Bazaar")) clock.start(randomizer());
  if (containerCheck("Bazaar") && clock.shouldFire()) {
- List slots = inventoryScanner.findContainer(activeBook.getRomanLevel(activeBook.level()));
+ List<Integer> slots = inventoryScanner.findContainer(activeBook.getRomanLevel(activeBook.level()));
  debug("Bazaar open, clicking slot " + slots + " for " + activeBook.getRomanLevel(activeBook.level()));
  if (slots.isEmpty()) return;
  InventoryUtils.clickSlot(slots.getFirst(), false);
@@ -419,7 +419,7 @@ public class BazaarFlipper implements Feature {
  return;
  }
 
- List slots = inventoryScanner.findContainer("BUY " + bookToHandle.getRomanLevel(bookToHandle.level()));
+ List<Integer> slots = inventoryScanner.findContainer("BUY " + bookToHandle.getRomanLevel(bookToHandle.level()));
  debug("found " + slots.size() + " slots for " + bookToHandle);
 
  if (slots.isEmpty()) {
@@ -461,7 +461,7 @@ public class BazaarFlipper implements Feature {
  if (containerCheck("Order")) clock.start(randomizer());
  if (containerCheck("Order") && clock.shouldFire()) {
  didRemoveOrder = true;
- List slot = inventoryScanner.findContainer("Cancel Order");
+ List<Integer> slot = inventoryScanner.findContainer("Cancel Order");
  if (slot.isEmpty()) return;
  debug("Order screen open, clicking slot " + slot.getFirst());
  InventoryUtils.clickSlot(slot.getFirst(), false);
@@ -494,7 +494,7 @@ public class BazaarFlipper implements Feature {
  // Reconcile actual counts so a lagged-back store never desyncs the counters.
  reconcileBookCounts(bookToHandle);
 
- List slots = new ArrayList<>();
+ List<Integer> slots = new ArrayList<>();
  slots.addAll(inventoryScanner.findLoreInv(bookToHandle.getRomanLevel(bookToHandle.level())));
  if (!slots.isEmpty()) {
  if (inventoryScanner.getEmptyContainerSlots() == 0) {
@@ -553,7 +553,7 @@ public class BazaarFlipper implements Feature {
  // Reconcile actual counts so a lagged-back pull never desyncs the counters.
  reconcileBookCounts(bookToHandle);
 
- List slots = new ArrayList<>();
+ List<Integer> slots = new ArrayList<>();
 
  slots.addAll(inventoryScanner.findLoreContainer(bookToHandle.getRomanLevel(bookToHandle.level())));
 
@@ -612,7 +612,7 @@ public class BazaarFlipper implements Feature {
  return;
  }
 
- List book = inventoryScanner.findLoreInv(bookToHandle.getRomanLevel(level));
+ List<Integer> book = inventoryScanner.findLoreInv(bookToHandle.getRomanLevel(level));
 
  if (!book.isEmpty()) {
  if (inventoryScanner.findMisMatch(bookToHandle.getRomanLevel(level))) {
@@ -623,7 +623,7 @@ public class BazaarFlipper implements Feature {
  InventoryUtils.clickSlot(book.getFirst(), true);
  return;
  } else {
- List bookInContainer = inventoryScanner.findLoreContainer(bookToHandle.getRomanLevel(level));
+ List<Integer> bookInContainer = inventoryScanner.findLoreContainer(bookToHandle.getRomanLevel(level));
  if (bookInContainer.size() >= 2) counter++;
  }
  }
@@ -642,8 +642,8 @@ public class BazaarFlipper implements Feature {
  }
 
  case SELL -> {
- List slots = new ArrayList<>();
- List bookList = (booksInState(BookState.SELL));
+ List<Integer> slots = new ArrayList<>();
+ List<Book> bookList = (booksInState(BookState.SELL));
  if (bookList.isEmpty()) {
  debug("bookstoSell empty, switching to IDLE");
  state = State.FETCHING;
@@ -675,7 +675,7 @@ public class BazaarFlipper implements Feature {
  }
  if (slots.isEmpty()) {
  debug("no slots found, clicking on: " + bookList.getFirst().name());
- List slot = inventoryScanner.findLoreInv(bookList.getFirst().getRomanLevel(bookList.getFirst().sellLevel()));
+ List<Integer> slot = inventoryScanner.findLoreInv(bookList.getFirst().getRomanLevel(bookList.getFirst().sellLevel()));
  if (slot.isEmpty()) {
  bookList.removeFirst();
  debug("slot is empty, removed book from booksToSell and return");
@@ -687,7 +687,7 @@ public class BazaarFlipper implements Feature {
 
  if (containerCheck("Order")) clock.start(randomizer());
  if (containerCheck("Order") && clock.shouldFire()) {
- List slot = inventoryScanner.findContainer("Cancel Order");
+ List<Integer> slot = inventoryScanner.findContainer("Cancel Order");
  if (slot.isEmpty()) return;
  debug("Order screen open, clicking slot " + slot.getFirst());
  InventoryUtils.clickSlot(slot.getFirst(), false);
@@ -736,11 +736,11 @@ public class BazaarFlipper implements Feature {
 
  if (containerCheck("Bazaar")) clock.start(randomizer());
  if (containerCheck("Bazaar") && clock.shouldFire()) {
- List slots = new ArrayList<>();
+ List<Integer> slots = new ArrayList<>();
 
  slots.addAll(inventoryScanner.getSellOrder());
  if (slots.isEmpty()) {
- List slot = new ArrayList<>();
+ List<Integer> slot = new ArrayList<>();
  for (String string : sellOrderName) {
  slot.addAll(inventoryScanner.findLoreInv(string));
  }
@@ -764,7 +764,7 @@ public class BazaarFlipper implements Feature {
 
  if (containerCheck("Order")) clock.start(randomizer());
  if (containerCheck("Order") && clock.shouldFire()) {
- List slot = inventoryScanner.findContainer("Cancel Order");
+ List<Integer> slot = inventoryScanner.findContainer("Cancel Order");
  if (slot.isEmpty()) return;
  debug("Order screen open, clicking slot " + slot.getFirst());
  InventoryUtils.clickSlot(slot.getFirst(), false);
@@ -807,16 +807,16 @@ public class BazaarFlipper implements Feature {
  }
  }
 
- private List booksInState(BookState target) {
- List result = new ArrayList<>();
+ private List<Book> booksInState(BookState target) {
+ List<Book> result = new ArrayList<>();
  for (Map.Entry<Book, Task> entry : task.entrySet()) {
  if (entry.getValue().getBookState() == target) result.add(entry.getKey());
  }
  return result;
  }
 
- private List booksInState(BookState target, BookState target2) {
- List result = new ArrayList<>();
+ private List<Book> booksInState(BookState target, BookState target2) {
+ List<Book> result = new ArrayList<>();
  for (Map.Entry<Book, Task> entry : task.entrySet()) {
  if (entry.getValue().getBookState() == target) result.add(entry.getKey());
  }
@@ -851,7 +851,7 @@ public class BazaarFlipper implements Feature {
 
  private void removeDuplicateBooks(Map<Book, Task> tasks) {
  Map<String, Integer> counts = new HashMap<>();
- List stateBooks = new ArrayList<>();
+ List<Book> stateBooks = new ArrayList<>();
 
  stateBooks.addAll(booksInState(BookState.SELL));
 
@@ -955,7 +955,7 @@ public class BazaarFlipper implements Feature {
  }
 
  private void handleFilledMessage(String string) {
- List booksInState = new ArrayList<>();
+ List<Book> booksInState = new ArrayList<>();
  booksInState.addAll(booksInState(BookState.BUY_ORDER, BookState.STORE));
 
  String stripped = string

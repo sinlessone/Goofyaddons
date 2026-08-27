@@ -662,7 +662,7 @@ public class BazaarFlipper implements Feature {
                         debug("no slots found, clicking on: " + bookList.getFirst().name());
                         List<Integer> slot = inventoryScanner.findLoreInv(bookList.getFirst().getRomanLevel(bookList.getFirst().sellLevel()));
                         if (slot.isEmpty()) {
-                            bookList.removeFirst();
+                            task.remove(bookList.getFirst());
                             debug("slot is empty, removed book from booksToSell and return");
                             return;
                         }

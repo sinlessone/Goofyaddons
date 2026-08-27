@@ -23,7 +23,7 @@ public class GoofyAddonsClient implements ClientModInitializer {
             FailsafeManager.INSTANCE.onTick();
             FeatureManager.INSTANCE.onTick();
 
-            if (InputConstants.isKeyDown(minecraft.getWindow(), GLFW.GLFW_KEY_BACKSLASH)) GoofyConfig.save();
+            if (InputConstants.isKeyDown(minecraft.getWindow(), GLFW.GLFW_KEY_BACKSLASH)) GoofyConfig.load();
 
             while (GoofyKeybinds.startKey.consumeClick()) {
                 FeatureManager.INSTANCE.start("BazaarFlipper");

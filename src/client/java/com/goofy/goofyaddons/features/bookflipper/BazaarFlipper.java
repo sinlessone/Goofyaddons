@@ -7,13 +7,22 @@ import com.goofy.goofyaddons.features.bookflipper.helper.BazaarMonitor;
 import com.goofy.goofyaddons.features.bookflipper.helper.Book;
 import com.goofy.goofyaddons.features.bookflipper.helper.FlipCalculator;
 import com.goofy.goofyaddons.features.bookflipper.helper.FlipItem;
-import com.goofy.goofyaddons.utils.*;
+import com.goofy.goofyaddons.utils.ChatUtils;
+import com.goofy.goofyaddons.utils.Clock;
+import com.goofy.goofyaddons.utils.InventoryScanner;
+import com.goofy.goofyaddons.utils.InventoryUtils;
+import com.goofy.goofyaddons.utils.ScoreboardUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractSignEditScreen;
 import net.minecraft.client.gui.screens.inventory.SignEditScreen;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.SplittableRandom;
 
 
 public class BazaarFlipper implements Feature {
@@ -174,7 +183,8 @@ public class BazaarFlipper implements Feature {
                     openEnderChest(false);
                 }
 
-                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(randomizer());
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack"))
+                    clock.start(randomizer());
                 if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack") && clock.shouldFire()) {
                     List<Book> bookList = new ArrayList<>();
                     bookList.addAll(booksInState(BookState.SELECTED));
@@ -458,8 +468,9 @@ public class BazaarFlipper implements Feature {
 
                 }
 
-                    if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(speedMode());
-                    if ((containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) && clock.shouldFire()) {
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack"))
+                    clock.start(speedMode());
+                if ((containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) && clock.shouldFire()) {
                     Book bookToHandle = firstBookInState(BookState.STORE);
 
                     if (bookToHandle == null) {
@@ -511,7 +522,8 @@ public class BazaarFlipper implements Feature {
                     return;
                 }
 
-                if (!containerCheck("Ender Chest") && !containerCheck("Jumbo Backpack") && !containerCheck("Greater Backpack")) clock.start(randomizer());
+                if (!containerCheck("Ender Chest") && !containerCheck("Jumbo Backpack") && !containerCheck("Greater Backpack"))
+                    clock.start(randomizer());
                 if (!containerCheck("Ender Chest") && !containerCheck("Jumbo Backpack") && !containerCheck("Greater Backpack") && clock.shouldFire()) {
                     debug("no ender chest, opening it");
                     if (task.get(bookToHandle).isShouldCheckSecondPage()) {
@@ -522,8 +534,9 @@ public class BazaarFlipper implements Feature {
 
                 }
 
-                    if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) clock.start(speedMode());
-                    if ((containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) && clock.shouldFire()) {
+                if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack"))
+                    clock.start(speedMode());
+                if ((containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) && clock.shouldFire()) {
                     List<Integer> slots = new ArrayList<>();
 
                     slots.addAll(inventoryScanner.findLoreContainer(bookToHandle.getRomanLevel(bookToHandle.level())));
@@ -637,7 +650,7 @@ public class BazaarFlipper implements Feature {
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
 
                     for (Book book : bookList) {
-                        slots.addAll(inventoryScanner.findContainer("SELL " + book.getRomanLevel(5)));
+                        slots.addAll(inventoryScanner.findContainer("SELL " + book.getRomanLevel(book.sellLevel())));
                     }
                     debug("found " + slots.size() + " sell slots");
 
@@ -881,7 +894,8 @@ public class BazaarFlipper implements Feature {
     }
 
     private void openEnderChest(boolean useSecondPage) {
-        if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack")) return;
+        if (containerCheck("Ender Chest") || containerCheck("Jumbo Backpack") || containerCheck("Greater Backpack"))
+            return;
         debug("openEnderChest");
         if (useSecondPage) {
             minecraft.player.connection.sendCommand(GoofyConfig.INSTANCE.secondPage);
@@ -908,11 +922,11 @@ public class BazaarFlipper implements Feature {
     }
 
 
-private boolean containerCheck(String name) {
-    if (minecraft.screen == null) return false;
-    String title = minecraft.screen.getTitle().getString();
-    return title.toLowerCase().contains(name.toLowerCase());
-}
+    private boolean containerCheck(String name) {
+        if (minecraft.screen == null) return false;
+        String title = minecraft.screen.getTitle().getString();
+        return title.toLowerCase().contains(name.toLowerCase());
+    }
 
     private boolean isContainerOpen() {
         if (minecraft.screen == null) return false;

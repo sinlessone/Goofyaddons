@@ -4,6 +4,7 @@ import com.goofy.goofyaddons.config.GoofyConfig;
 import com.goofy.goofyaddons.features.Feature;
 import com.goofy.goofyaddons.features.bookflipper.helper.Book;
 import com.goofy.goofyaddons.utils.*;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
@@ -33,6 +34,7 @@ public class AntiUnderBin implements Feature {
     private SplittableRandom random = new SplittableRandom();
 
     private Map<Book, Double> ourSellOrders = new LinkedHashMap<>();
+    private Map<Book, Double> newPrices = new HashMap<>();
     private List<Book> booksToRelist = new ArrayList<>();
     private Book activeBook = null;
 
@@ -55,6 +57,7 @@ public class AntiUnderBin implements Feature {
         enabled = true;
         state = State.IDLE;
         ourSellOrders.clear();
+        newPrices.clear();
         booksToRelist.clear();
         scannedOrders = false;
         activeBook = null;
@@ -273,18 +276,25 @@ public class AntiUnderBin implements Feature {
             Book book = entry.getKey();
             double ourPrice = entry.getValue();
 
-            JsonObject product = products.getAsJsonObject(book.getLevel(book.sellLevel()));
-            if (product == null) continue;
+            String exactName = book.getRomanLevel(book.sellLevel());
+            String apiId = book.getLevel(book.sellLevel());
 
-            if (product.getAsJsonArray("sell_summary").size() == 0) continue;
+            JsonObject product = products.getAsJsonObject(apiId);
+            if (product == null) {
+                debug("Warning: API ID '" + apiId + "' not found in Bazaar data!");
+                continue;
+            }
 
-            JsonObject sellSummary = product.getAsJsonArray("sell_summary").get(0).getAsJsonObject();
-            double bestPrice = sellSummary.get("pricePerUnit").getAsDouble();
+            JsonArray sellSummary = product.getAsJsonArray("sell_summary");
+            if (sellSummary.size() == 0) continue;
+
+            double bestPrice = sellSummary.get(0).getAsJsonObject().get("pricePerUnit").getAsDouble();
 
             if (bestPrice < ourPrice) {
                 if (!booksToRelist.contains(book)) {
                     booksToRelist.add(book);
-                    debug("Undercut detected on " + book.name() + "! Our price: " + ourPrice + ", Best price: " + bestPrice);
+                    newPrices.put(book, bestPrice - 0.1);
+                    debug("Undercut detected on " + exactName + " (API: " + apiId + ")! Our price: " + ourPrice + ", Best price: " + bestPrice);
                 }
             }
         }
@@ -293,14 +303,25 @@ public class AntiUnderBin implements Feature {
     private void scanSellOrders() {
         ourSellOrders.clear(); // Clear old prices to ensure we only track active orders
         List<Integer> sellSlots = inventoryScanner.getSellOrder();
+
         for (int slot : sellSlots) {
             String name = inventoryScanner.getName(slot);
             double price = inventoryScanner.getSellOrderPrice(slot);
+            int amount = inventoryScanner.checkOrder(slot);
+
+            // If the order has multiple items, getSellOrderPrice might return the total order price.
+            // Dividing it gives us the actual unit price to compare accurately against the API.
+            if (amount > 1) {
+                price = price / amount;
+            }
 
             for (Book book : GoofyConfig.INSTANCE.books) {
-                if (name.contains(book.name())) {
+                String exactName = book.getRomanLevel(book.sellLevel());
+
+                // Match the exact tier (e.g., "Smarty Pants V" instead of just "Smarty Pants")
+                if (name.contains(exactName)) {
                     ourSellOrders.put(book, price);
-                    debug("Scanned active order for " + book.name() + " at true price: " + price);
+                    debug("Scanned active order for " + exactName + " at true unit price: " + price + " (Amount: " + amount + ")");
                     break;
                 }
             }

@@ -121,6 +121,12 @@ public class AntiUnderBin implements Feature {
                     clock.start(randomDelay());
                 }
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
+                    // Click slot 50 to open main bazaar UI
+                    InventoryUtils.clickSlot(50, false);
+                    clock.start(randomDelay());
+                }
+
+                if (containerCheck("Bazaar") && clock.shouldFire()) {
                     if (!scannedOrders) {
                         state = State.SCAN_ORDERS;
                     } else if (!booksToRelist.isEmpty()) {
@@ -156,6 +162,12 @@ public class AntiUnderBin implements Feature {
                 if (containerCheck("Bazaar")) {
                     clock.start(randomDelay());
                 }
+                if (containerCheck("Bazaar") && clock.shouldFire()) {
+                    // Click slot 50 to open main bazaar UI
+                    InventoryUtils.clickSlot(50, false);
+                    clock.start(randomDelay());
+                }
+
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
                     List<Integer> sellSlots = inventoryScanner.getSellOrder();
                     boolean found = false;

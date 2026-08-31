@@ -38,6 +38,7 @@ public class AntiUnderBin implements Feature {
     private List<Book> booksToRelist = new ArrayList<>();
     private Book activeBook = null;
 
+    private boolean hasCancelled = false;
     private int relistWaitCounter = 0;
     private long lastUpdated = 0;
     private long checkInterval = 15000;
@@ -61,6 +62,7 @@ public class AntiUnderBin implements Feature {
         booksToRelist.clear();
         scannedOrders = false;
         activeBook = null;
+        hasCancelled = false;
         relistWaitCounter = 0;
         lastUpdated = 0;
     }
@@ -163,7 +165,12 @@ public class AntiUnderBin implements Feature {
                         return;
                     }
 
-                    activeBook = booksToRelist.get(0);
+                    // Setup the new target if we just moved to the next book
+                    if (activeBook != booksToRelist.get(0)) {
+                        activeBook = booksToRelist.get(0);
+                        hasCancelled = false; // Reset the cancel state
+                    }
+
                     String activeBookTarget = activeBook.getRomanLevel(activeBook.sellLevel());
                     List<Integer> slots = inventoryScanner.getSellOrder();
 
@@ -171,6 +178,7 @@ public class AntiUnderBin implements Feature {
                     for (int slot : slots) {
                         String name = inventoryScanner.getName(slot);
                         if (name.contains("SELL") && name.contains(activeBookTarget)) {
+                            // First click will claim partial coins, second click (next tick) opens the Cancel Order page
                             debug("Found active sell order for " + activeBookTarget + ", clicking slot " + slot);
                             InventoryUtils.clickSlot(slot, false);
                             foundOrder = true;
@@ -180,6 +188,17 @@ public class AntiUnderBin implements Feature {
                     }
 
                     if (!foundOrder) {
+                        if (!hasCancelled) {
+                            // If it disappeared from the active orders menu but we NEVER clicked the Cancel button,
+                            // it means our first click fully claimed a 100% sold order and it deleted itself!
+                            debug("Order for " + activeBookTarget + " disappeared without cancellation. Assuming fully sold!");
+                            booksToRelist.remove(0);
+                            ourSellOrders.remove(activeBook);
+                            activeBook = null;
+                            relistWaitCounter = 0;
+                            return; // Move on instantly, stop watching this book.
+                        }
+
                         List<Integer> invSlots = inventoryScanner.findLoreInv(activeBookTarget);
 
                         // Found item directly in inventory (post-cancellation)
@@ -190,12 +209,14 @@ public class AntiUnderBin implements Feature {
                             return;
                         }
 
-                        // Order cancelled but hasn't entered inventory just yet
+                        // Order was manually cancelled but hasn't entered inventory just yet (due to ping/lag)
                         relistWaitCounter++;
                         debug("Waiting for " + activeBookTarget + " to appear in inventory... (" + relistWaitCounter + "/20)");
                         if (relistWaitCounter > 20) {
                             debug("Timed out waiting for item in inventory. Skipping this relist.");
                             booksToRelist.remove(0);
+                            ourSellOrders.remove(activeBook);
+                            activeBook = null;
                             relistWaitCounter = 0;
                         }
                         return;
@@ -208,6 +229,7 @@ public class AntiUnderBin implements Feature {
                     if (slot.isEmpty()) return;
                     debug("Order screen open, clicking Cancel Order slot " + slot.get(0));
                     InventoryUtils.clickSlot(slot.get(0), false);
+                    hasCancelled = true; // Flag that we have explicitly cancelled it so we wait for the item
                 }
 
                 if (activeBook != null && containerCheck(activeBook.name())) clock.start(randomDelay());
@@ -231,6 +253,7 @@ public class AntiUnderBin implements Feature {
                         booksToRelist.remove(0);
                     }
                     activeBook = null;
+                    hasCancelled = false;
                     relistWaitCounter = 0;
 
                     if (booksToRelist.isEmpty()) {
@@ -285,10 +308,14 @@ public class AntiUnderBin implements Feature {
                 continue;
             }
 
-            JsonArray sellSummary = product.getAsJsonArray("sell_summary");
-            if (sellSummary.size() == 0) continue;
+            // FUN FACT: Hypixel API is swapped.
+            // "buy_summary" = SELL OFFERS (Items you can buy)
+            // "sell_summary" = BUY ORDERS (Coins you can sell items to)
+            // We want to undercut other SELL OFFERS, so we MUST use "buy_summary"
+            JsonArray buySummary = product.getAsJsonArray("buy_summary");
+            if (buySummary.size() == 0) continue;
 
-            double bestPrice = sellSummary.get(0).getAsJsonObject().get("pricePerUnit").getAsDouble();
+            double bestPrice = buySummary.get(0).getAsJsonObject().get("pricePerUnit").getAsDouble();
 
             if (bestPrice < ourPrice) {
                 if (!booksToRelist.contains(book)) {
@@ -306,14 +333,7 @@ public class AntiUnderBin implements Feature {
 
         for (int slot : sellSlots) {
             String name = inventoryScanner.getName(slot);
-            double price = inventoryScanner.getSellOrderPrice(slot);
-            int amount = inventoryScanner.checkOrder(slot);
-
-            // If the order has multiple items, getSellOrderPrice might return the total order price.
-            // Dividing it gives us the actual unit price to compare accurately against the API.
-            if (amount > 1) {
-                price = price / amount;
-            }
+            double price = inventoryScanner.getSellOrderPrice(slot); // Should be true price per unit
 
             for (Book book : GoofyConfig.INSTANCE.books) {
                 String exactName = book.getRomanLevel(book.sellLevel());
@@ -321,7 +341,7 @@ public class AntiUnderBin implements Feature {
                 // Match the exact tier (e.g., "Smarty Pants V" instead of just "Smarty Pants")
                 if (name.contains(exactName)) {
                     ourSellOrders.put(book, price);
-                    debug("Scanned active order for " + exactName + " at true unit price: " + price + " (Amount: " + amount + ")");
+                    debug("Scanned active order for " + exactName + " at true unit price: " + price);
                     break;
                 }
             }

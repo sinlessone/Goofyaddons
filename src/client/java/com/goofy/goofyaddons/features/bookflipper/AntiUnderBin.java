@@ -205,12 +205,40 @@ public class AntiUnderBin implements Feature {
             }
 
             case RELIST_NAVIGATION -> {
-                debug("RELIST_NAVIGATION: checking for book=" + activeBook.name() + ", container=" + (minecraft.screen != null ? minecraft.screen.getTitle().getString() : "null"));
+                // After cancelling, we're in "Your Bazaar Orders" - need to navigate to the book
+                if (containerCheck("Your Bazaar Orders")) {
+                    clock.start(randomDelay());
+                }
+                if (containerCheck("Your Bazaar Orders") && clock.shouldFire()) {
+                    debug("In Your Bazaar Orders, closing and navigating to book");
+                    minecraft.player.closeContainer();
+                    clock.start(randomDelay());
+                }
+
+                // No container open - open bazaar with book name
+                if (!isContainerOpen() && clock.shouldFire()) {
+                    openBazaar(activeBook.name());
+                }
+
+                // Wait for Bazaar container
+                if (containerCheck("Bazaar")) {
+                    clock.start(randomDelay());
+                }
+                if (containerCheck("Bazaar") && clock.shouldFire()) {
+                    // Find and click the book in the bazaar list
+                    List<Integer> slots = inventoryScanner.findContainer(activeBook.getRomanLevel(activeBook.level()));
+                    if (!slots.isEmpty()) {
+                        debug("Found book in bazaar, clicking slot " + slots.get(0));
+                        InventoryUtils.clickSlot(slots.get(0), false);
+                    }
+                }
+
+                // Now we should be on the book screen (e.g., "Smarty Pants")
                 if (containerCheck(activeBook.name())) {
                     clock.start(randomDelay());
                 }
                 if (containerCheck(activeBook.name()) && clock.shouldFire()) {
-                    debug("Book container found, clicking slot 16");
+                    debug("Book container found, clicking slot 16 (Sell Offer)");
                     InventoryUtils.clickSlot(16, false);
                 }
 
@@ -226,6 +254,7 @@ public class AntiUnderBin implements Feature {
             case SET_PRICE -> {
                 debug("SET_PRICE: clicking slot 12");
                 InventoryUtils.clickSlot(12, false);
+                clock.start(randomDelay());
                 state = State.CONFIRM;
             }
 

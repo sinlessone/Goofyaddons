@@ -7,7 +7,6 @@ import com.goofy.goofyaddons.utils.*;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.item.ItemStack;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -21,11 +20,7 @@ public class AntiUnderBin implements Feature {
         CHECKING,
         OPEN_BAZAAR,
         SCAN_ORDERS,
-        NAVIGATE_SELL_ORDER,
-        CANCEL_ORDER,
-        RELIST_NAVIGATION,
-        SET_PRICE,
-        CONFIRM
+        REPLACE_SELL
     }
 
     private boolean enabled = false;
@@ -42,7 +37,6 @@ public class AntiUnderBin implements Feature {
     private List<String> sellOrderName = new ArrayList<>();
     private Book activeBook = null;
     private double newPrice = 0;
-    private boolean closingAfterCancel = false;
 
     private long lastUpdated;
     private long checkInterval = 15000;
@@ -64,8 +58,8 @@ public class AntiUnderBin implements Feature {
         ourSellOrders.clear();
         booksToRelist.clear();
         sellOrderName.clear();
-        closingAfterCancel = false;
         scannedOrders = false;
+        activeBook = null;
     }
 
     @Override
@@ -99,13 +93,14 @@ public class AntiUnderBin implements Feature {
                     return;
                 }
 
+                if (!booksToRelist.isEmpty()) {
+                    state = State.REPLACE_SELL;
+                    return;
+                }
+
                 clock.start(checkInterval);
                 if (clock.shouldFire()) {
                     state = State.CHECKING;
-                }
-
-                if (!booksToRelist.isEmpty()) {
-                    state = State.NAVIGATE_SELL_ORDER;
                 }
             }
 
@@ -135,8 +130,6 @@ public class AntiUnderBin implements Feature {
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
                     if (!scannedOrders) {
                         state = State.SCAN_ORDERS;
-                    } else if (!booksToRelist.isEmpty()) {
-                        state = State.NAVIGATE_SELL_ORDER;
                     } else {
                         state = State.IDLE;
                         minecraft.player.closeContainer();
@@ -151,130 +144,102 @@ public class AntiUnderBin implements Feature {
                 minecraft.player.closeContainer();
             }
 
-            case NAVIGATE_SELL_ORDER -> {
-                if (booksToRelist.isEmpty()) {
-                    state = State.IDLE;
-                    return;
-                }
-
-                activeBook = booksToRelist.get(0);
-                if (!isContainerOpen()) {
-                    clock.start(randomDelay());
-                }
+            case REPLACE_SELL -> {
+                if (!isContainerOpen()) clock.start(randomDelay());
                 if (!isContainerOpen() && clock.shouldFire()) {
+                    debug("no container, opening bazaar for tomato");
                     openBazaar("tomato");
                 }
 
-                if (containerCheck("tomato")) {
-                    clock.start(randomDelay());
-                }
+                if (containerCheck("tomato")) clock.start(randomDelay());
                 if (containerCheck("tomato") && clock.shouldFire()) {
+                    debug("tomato bazaar open, clicking slot 50");
                     InventoryUtils.clickSlot(50, false);
                 }
 
-                if (containerCheck("Bazaar")) {
-                    clock.start(randomDelay());
-                }
+                if (containerCheck("Bazaar")) clock.start(randomDelay());
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
-                    List<Integer> sellSlots = inventoryScanner.getSellOrder();
-                    boolean found = false;
-                    for (int slot : sellSlots) {
+                    if (booksToRelist.isEmpty()) {
+                        state = State.IDLE;
+                        minecraft.player.closeContainer();
+                        return;
+                    }
+
+                    activeBook = booksToRelist.get(0);
+
+                    List<Integer> slots = new ArrayList<>();
+                    slots.addAll(inventoryScanner.getSellOrder());
+
+                    boolean foundOrder = false;
+                    for (int slot : slots) {
                         String name = inventoryScanner.getName(slot);
                         if (name.contains("SELL") && name.contains(activeBook.name())) {
+                            sellOrderName.clear();
+                            sellOrderName.add(name.replace("SELL ", ""));
                             InventoryUtils.clickSlot(slot, false);
-                            found = true;
+                            foundOrder = true;
                             break;
                         }
                     }
-                    if (!found) {
-                        booksToRelist.remove(0);
-                        ourSellOrders.remove(activeBook);
+
+                    if (!foundOrder) {
+                        List<Integer> slot = new ArrayList<>();
+                        if (!sellOrderName.isEmpty()) {
+                            slot.addAll(inventoryScanner.findLoreInv(sellOrderName.get(0)));
+                        }
+
+                        if (!slot.isEmpty()) {
+                            InventoryUtils.clickSlot(slot.get(0), false);
+                            return;
+                        }
+
+                        // If neither found in active sell orders nor our inventory (e.g. order might have been filled)
+                        if (sellOrderName.isEmpty()) {
+                            booksToRelist.remove(0);
+                            ourSellOrders.remove(activeBook);
+                        }
+                        return; // Return and let it retry next tick if waiting for item to enter inventory
                     }
                 }
 
-                if (containerCheck("Order")) {
-                    clock.start(randomDelay());
-                }
+                if (containerCheck("Order")) clock.start(randomDelay());
                 if (containerCheck("Order") && clock.shouldFire()) {
-                    state = State.CANCEL_ORDER;
-                }
-            }
-
-            case CANCEL_ORDER -> {
-                List<Integer> cancelSlot = inventoryScanner.findContainer("Cancel Order");
-                if (!cancelSlot.isEmpty()) {
-                    InventoryUtils.clickSlot(cancelSlot.get(0), false);
-                    closingAfterCancel = true;
-                    state = State.RELIST_NAVIGATION;
-                }
-            }
-
-            case RELIST_NAVIGATION -> {
-                // Phase A: close the post-cancel screen, then open the bazaar
-                if (closingAfterCancel && isContainerOpen() && clock.shouldFire()) {
-                    minecraft.player.closeContainer();
-                    clock.start(randomDelay());
-                }
-                if (closingAfterCancel && !isContainerOpen() && clock.shouldFire()) {
-                    openBazaar("tomato");
-                    closingAfterCancel = false;
-                    clock.start(randomDelay());
+                    List<Integer> slot = inventoryScanner.findContainer("Cancel Order");
+                    if (slot.isEmpty()) return;
+                    debug("Order screen open, clicking slot " + slot.get(0));
+                    InventoryUtils.clickSlot(slot.get(0), false);
                 }
 
-                // Phase B: navigate to the main bazaar and click the book in our inventory
-                if (containerCheck("tomato") && clock.shouldFire()) {
-                    InventoryUtils.clickSlot(50, false);
-                    clock.start(randomDelay());
-                }
-
-                if (containerCheck("Bazaar") && clock.shouldFire()) {
-                    for (String name : sellOrderName) {
-                        List<Integer> invSlots = inventoryScanner.findInv(name);
-                        if (!invSlots.isEmpty()) {
-                            InventoryUtils.clickSlot(invSlots.get(0), false);
-                            clock.start(randomDelay());
-                            break;
-                        }
-                    }
-                }
-
-                // Book page is open; click Sell Offer (slot 16)
+                if (!sellOrderName.isEmpty() && containerCheck(sellOrderName.get(0))) clock.start(randomDelay());
                 if (!sellOrderName.isEmpty() && containerCheck(sellOrderName.get(0)) && clock.shouldFire()) {
+                    debug("book screen open, clicking slot 16");
                     InventoryUtils.clickSlot(16, false);
-                    clock.start(randomDelay());
                 }
 
-                // Price screen reached
+                if (containerCheck("At what price are you selling")) clock.start(randomDelay());
                 if (containerCheck("At what price are you selling") && clock.shouldFire()) {
-                    state = State.SET_PRICE;
-                }
-            }
-
-            case SET_PRICE -> {
-                // Click the price button (slot 12) once the price screen is settled
-                if (containerCheck("At what price are you selling") && clock.shouldFire()) {
-                    debug("SET_PRICE: clicking slot 12");
+                    debug("price prompt, clicking slot 12");
                     InventoryUtils.clickSlot(12, false);
-                    clock.start(randomDelay());
-                    state = State.CONFIRM;
                 }
-            }
 
-            case CONFIRM -> {
-                debug("CONFIRM: checking for Confirm screen");
-                if (containerCheck("Confirm")) {
-                    clock.start(randomDelay());
-                }
+                if (containerCheck("Confirm")) clock.start(randomDelay());
                 if (containerCheck("Confirm") && clock.shouldFire()) {
-                    debug("Confirm screen found, clicking slot 13");
+                    debug("confirm prompt, clicking slot 13 and removing " + sellOrderName.get(0) + " from sell list");
                     InventoryUtils.clickSlot(13, false);
-                    if (!sellOrderName.isEmpty() && activeBook != null) {
+
+                    if (activeBook != null) {
                         ourSellOrders.put(activeBook, newPrice);
                     }
+
                     sellOrderName.clear();
-                    booksToRelist.remove(0);
+                    if (!booksToRelist.isEmpty()) {
+                        booksToRelist.remove(0);
+                    }
                     activeBook = null;
-                    state = State.IDLE;
+
+                    if (booksToRelist.isEmpty()) {
+                        state = State.IDLE;
+                    }
                 }
             }
         }
@@ -290,9 +255,9 @@ public class AntiUnderBin implements Feature {
                 .thenApply(HttpResponse::body)
                 .thenApply(body -> JsonParser.parseString(body).getAsJsonObject())
                 .thenAccept(root -> {
-                    long lastUpdated = root.get("lastUpdated").getAsLong();
-                    if (lastUpdated == this.lastUpdated) return;
-                    this.lastUpdated = lastUpdated;
+                    long currentUpdated = root.get("lastUpdated").getAsLong();
+                    if (currentUpdated == this.lastUpdated) return;
+                    this.lastUpdated = currentUpdated;
 
                     JsonObject products = root.getAsJsonObject("products");
                     checkForUndercut(products);
@@ -331,11 +296,6 @@ public class AntiUnderBin implements Feature {
             for (Book book : GoofyConfig.INSTANCE.books) {
                 if (name.contains(book.name())) {
                     ourSellOrders.put(book, price);
-                    // Capture the clean display name (without formatting) so we can locate the item later
-                    ItemStack item = minecraft.player.containerMenu.slots.get(slot).getItem();
-                    if (item.getCustomName() != null) {
-                        sellOrderName.add(item.getCustomName().getString().replace("SELL ", ""));
-                    }
                     break;
                 }
             }

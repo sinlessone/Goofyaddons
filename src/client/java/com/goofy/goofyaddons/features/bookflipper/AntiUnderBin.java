@@ -33,12 +33,11 @@ public class AntiUnderBin implements Feature {
     private SplittableRandom random = new SplittableRandom();
 
     private Map<Book, Double> ourSellOrders = new LinkedHashMap<>();
-    private Map<Book, Double> newPrices = new HashMap<>();
     private List<Book> booksToRelist = new ArrayList<>();
     private Book activeBook = null;
 
     private int relistWaitCounter = 0;
-    private long lastUpdated;
+    private long lastUpdated = 0;
     private long checkInterval = 15000;
     private boolean scannedOrders = false;
 
@@ -56,11 +55,11 @@ public class AntiUnderBin implements Feature {
         enabled = true;
         state = State.IDLE;
         ourSellOrders.clear();
-        newPrices.clear();
         booksToRelist.clear();
         scannedOrders = false;
         activeBook = null;
         relistWaitCounter = 0;
+        lastUpdated = 0;
     }
 
     @Override
@@ -155,6 +154,7 @@ public class AntiUnderBin implements Feature {
                 if (containerCheck("Bazaar")) clock.start(randomDelay());
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
                     if (booksToRelist.isEmpty()) {
+                        scannedOrders = false; // Force rescan to verify actual prices
                         state = State.IDLE;
                         minecraft.player.closeContainer();
                         return;
@@ -193,7 +193,6 @@ public class AntiUnderBin implements Feature {
                         if (relistWaitCounter > 20) {
                             debug("Timed out waiting for item in inventory. Skipping this relist.");
                             booksToRelist.remove(0);
-                            ourSellOrders.remove(activeBook);
                             relistWaitCounter = 0;
                         }
                         return;
@@ -222,12 +221,8 @@ public class AntiUnderBin implements Feature {
 
                 if (containerCheck("Confirm")) clock.start(randomDelay());
                 if (containerCheck("Confirm") && clock.shouldFire()) {
-                    debug("confirm prompt, clicking slot 13 and saving new price");
+                    debug("confirm prompt, clicking slot 13");
                     InventoryUtils.clickSlot(13, false);
-
-                    if (activeBook != null) {
-                        ourSellOrders.put(activeBook, newPrices.getOrDefault(activeBook, 0.0));
-                    }
 
                     if (!booksToRelist.isEmpty()) {
                         booksToRelist.remove(0);
@@ -236,7 +231,10 @@ public class AntiUnderBin implements Feature {
                     relistWaitCounter = 0;
 
                     if (booksToRelist.isEmpty()) {
+                        debug("Finished relisting, triggering live rescan of new prices.");
                         state = State.IDLE;
+                        scannedOrders = false; // Forces it to physically read the exact server price
+                        minecraft.player.closeContainer();
                     }
                 }
             }
@@ -253,12 +251,20 @@ public class AntiUnderBin implements Feature {
                 .thenApply(HttpResponse::body)
                 .thenApply(body -> JsonParser.parseString(body).getAsJsonObject())
                 .thenAccept(root -> {
-                    long currentUpdated = root.get("lastUpdated").getAsLong();
-                    if (currentUpdated == this.lastUpdated) return;
-                    this.lastUpdated = currentUpdated;
+                    // Force the processing back onto the main thread to avoid Memory Visibility drift
+                    minecraft.execute(() -> {
+                        if (!enabled) return;
 
-                    JsonObject products = root.getAsJsonObject("products");
-                    checkForUndercut(products);
+                        long currentUpdated = root.get("lastUpdated").getAsLong();
+                        if (currentUpdated == this.lastUpdated) return;
+                        this.lastUpdated = currentUpdated;
+
+                        JsonObject products = root.getAsJsonObject("products");
+                        checkForUndercut(products);
+                    });
+                }).exceptionally(e -> {
+                    debug("API Fetch failed: " + e.getMessage());
+                    return null;
                 });
     }
 
@@ -278,14 +284,14 @@ public class AntiUnderBin implements Feature {
             if (bestPrice < ourPrice) {
                 if (!booksToRelist.contains(book)) {
                     booksToRelist.add(book);
-                    newPrices.put(book, bestPrice - 0.1);
-                    debug("Undercut on " + book.name() + "! Our price: " + ourPrice + ", Best price: " + bestPrice + ", Relisting target: " + (bestPrice - 0.1));
+                    debug("Undercut detected on " + book.name() + "! Our price: " + ourPrice + ", Best price: " + bestPrice);
                 }
             }
         }
     }
 
     private void scanSellOrders() {
+        ourSellOrders.clear(); // Clear old prices to ensure we only track active orders
         List<Integer> sellSlots = inventoryScanner.getSellOrder();
         for (int slot : sellSlots) {
             String name = inventoryScanner.getName(slot);
@@ -294,6 +300,7 @@ public class AntiUnderBin implements Feature {
             for (Book book : GoofyConfig.INSTANCE.books) {
                 if (name.contains(book.name())) {
                     ourSellOrders.put(book, price);
+                    debug("Scanned active order for " + book.name() + " at true price: " + price);
                     break;
                 }
             }

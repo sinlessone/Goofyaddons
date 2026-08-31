@@ -70,6 +70,17 @@ public class AntiUnderBin implements Feature {
         state = State.IDLE;
         clock.stop();
     }
+
+    @Override
+    public void pause() {
+        enabled = false;
+    }
+
+    @Override
+    public void resume() {
+        enabled = true;
+    }
+
     @Override
     public void onTick() {
         if (!enabled) return;

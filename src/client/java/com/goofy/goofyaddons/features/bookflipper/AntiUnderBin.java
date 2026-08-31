@@ -33,11 +33,11 @@ public class AntiUnderBin implements Feature {
     private SplittableRandom random = new SplittableRandom();
 
     private Map<Book, Double> ourSellOrders = new LinkedHashMap<>();
+    private Map<Book, Double> newPrices = new HashMap<>();
     private List<Book> booksToRelist = new ArrayList<>();
-    private List<String> sellOrderName = new ArrayList<>();
     private Book activeBook = null;
-    private double newPrice = 0;
 
+    private int relistWaitCounter = 0;
     private long lastUpdated;
     private long checkInterval = 15000;
     private boolean scannedOrders = false;
@@ -56,10 +56,11 @@ public class AntiUnderBin implements Feature {
         enabled = true;
         state = State.IDLE;
         ourSellOrders.clear();
+        newPrices.clear();
         booksToRelist.clear();
-        sellOrderName.clear();
         scannedOrders = false;
         activeBook = null;
+        relistWaitCounter = 0;
     }
 
     @Override
@@ -110,23 +111,17 @@ public class AntiUnderBin implements Feature {
             }
 
             case OPEN_BAZAAR -> {
-                if (!isContainerOpen()) {
-                    clock.start(randomDelay());
-                }
+                if (!isContainerOpen()) clock.start(randomDelay());
                 if (!isContainerOpen() && clock.shouldFire()) {
                     openBazaar("tomato");
                 }
 
-                if (containerCheck("tomato")) {
-                    clock.start(randomDelay());
-                }
+                if (containerCheck("tomato")) clock.start(randomDelay());
                 if (containerCheck("tomato") && clock.shouldFire()) {
                     InventoryUtils.clickSlot(50, false);
                 }
 
-                if (containerCheck("Bazaar")) {
-                    clock.start(randomDelay());
-                }
+                if (containerCheck("Bazaar")) clock.start(randomDelay());
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
                     if (!scannedOrders) {
                         state = State.SCAN_ORDERS;
@@ -166,39 +161,42 @@ public class AntiUnderBin implements Feature {
                     }
 
                     activeBook = booksToRelist.get(0);
-
-                    List<Integer> slots = new ArrayList<>();
-                    slots.addAll(inventoryScanner.getSellOrder());
+                    String activeBookTarget = activeBook.getRomanLevel(activeBook.sellLevel());
+                    List<Integer> slots = inventoryScanner.getSellOrder();
 
                     boolean foundOrder = false;
                     for (int slot : slots) {
                         String name = inventoryScanner.getName(slot);
-                        if (name.contains("SELL") && name.contains(activeBook.name())) {
-                            sellOrderName.clear();
-                            sellOrderName.add(name.replace("SELL ", ""));
+                        if (name.contains("SELL") && name.contains(activeBookTarget)) {
+                            debug("Found active sell order for " + activeBookTarget + ", clicking slot " + slot);
                             InventoryUtils.clickSlot(slot, false);
                             foundOrder = true;
+                            relistWaitCounter = 0;
                             break;
                         }
                     }
 
                     if (!foundOrder) {
-                        List<Integer> slot = new ArrayList<>();
-                        if (!sellOrderName.isEmpty()) {
-                            slot.addAll(inventoryScanner.findLoreInv(sellOrderName.get(0)));
-                        }
+                        List<Integer> invSlots = inventoryScanner.findLoreInv(activeBookTarget);
 
-                        if (!slot.isEmpty()) {
-                            InventoryUtils.clickSlot(slot.get(0), false);
+                        // Found item directly in inventory (post-cancellation)
+                        if (!invSlots.isEmpty()) {
+                            relistWaitCounter = 0;
+                            debug("Found " + activeBookTarget + " in inventory, clicking slot " + invSlots.get(0));
+                            InventoryUtils.clickSlot(invSlots.get(0), false);
                             return;
                         }
 
-                        // If neither found in active sell orders nor our inventory (e.g. order might have been filled)
-                        if (sellOrderName.isEmpty()) {
+                        // Order cancelled but hasn't entered inventory just yet
+                        relistWaitCounter++;
+                        debug("Waiting for " + activeBookTarget + " to appear in inventory... (" + relistWaitCounter + "/20)");
+                        if (relistWaitCounter > 20) {
+                            debug("Timed out waiting for item in inventory. Skipping this relist.");
                             booksToRelist.remove(0);
                             ourSellOrders.remove(activeBook);
+                            relistWaitCounter = 0;
                         }
-                        return; // Return and let it retry next tick if waiting for item to enter inventory
+                        return;
                     }
                 }
 
@@ -206,36 +204,36 @@ public class AntiUnderBin implements Feature {
                 if (containerCheck("Order") && clock.shouldFire()) {
                     List<Integer> slot = inventoryScanner.findContainer("Cancel Order");
                     if (slot.isEmpty()) return;
-                    debug("Order screen open, clicking slot " + slot.get(0));
+                    debug("Order screen open, clicking Cancel Order slot " + slot.get(0));
                     InventoryUtils.clickSlot(slot.get(0), false);
                 }
 
-                if (!sellOrderName.isEmpty() && containerCheck(sellOrderName.get(0))) clock.start(randomDelay());
-                if (!sellOrderName.isEmpty() && containerCheck(sellOrderName.get(0)) && clock.shouldFire()) {
-                    debug("book screen open, clicking slot 16");
+                if (activeBook != null && containerCheck(activeBook.name())) clock.start(randomDelay());
+                if (activeBook != null && containerCheck(activeBook.name()) && clock.shouldFire()) {
+                    debug("book screen open (" + activeBook.name() + "), clicking slot 16");
                     InventoryUtils.clickSlot(16, false);
                 }
 
                 if (containerCheck("At what price are you selling")) clock.start(randomDelay());
                 if (containerCheck("At what price are you selling") && clock.shouldFire()) {
-                    debug("price prompt, clicking slot 12");
+                    debug("price prompt, clicking slot 12 (Top offer - 0.1)");
                     InventoryUtils.clickSlot(12, false);
                 }
 
                 if (containerCheck("Confirm")) clock.start(randomDelay());
                 if (containerCheck("Confirm") && clock.shouldFire()) {
-                    debug("confirm prompt, clicking slot 13 and removing " + sellOrderName.get(0) + " from sell list");
+                    debug("confirm prompt, clicking slot 13 and saving new price");
                     InventoryUtils.clickSlot(13, false);
 
                     if (activeBook != null) {
-                        ourSellOrders.put(activeBook, newPrice);
+                        ourSellOrders.put(activeBook, newPrices.getOrDefault(activeBook, 0.0));
                     }
 
-                    sellOrderName.clear();
                     if (!booksToRelist.isEmpty()) {
                         booksToRelist.remove(0);
                     }
                     activeBook = null;
+                    relistWaitCounter = 0;
 
                     if (booksToRelist.isEmpty()) {
                         state = State.IDLE;
@@ -280,8 +278,8 @@ public class AntiUnderBin implements Feature {
             if (bestPrice < ourPrice) {
                 if (!booksToRelist.contains(book)) {
                     booksToRelist.add(book);
-                    newPrice = bestPrice - 1;
-                    debug("Undercut on " + book.name() + "! Our price: " + ourPrice + ", Best price: " + bestPrice + ", Relisting at: " + newPrice);
+                    newPrices.put(book, bestPrice - 0.1);
+                    debug("Undercut on " + book.name() + "! Our price: " + ourPrice + ", Best price: " + bestPrice + ", Relisting target: " + (bestPrice - 0.1));
                 }
             }
         }

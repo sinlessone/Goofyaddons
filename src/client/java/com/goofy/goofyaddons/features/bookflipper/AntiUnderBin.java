@@ -205,51 +205,36 @@ public class AntiUnderBin implements Feature {
             }
 
             case RELIST_NAVIGATION -> {
-                // After cancelling, we're in "Your Bazaar Orders" - close it
-                if (containerCheck("Your Bazaar Orders")) {
-                    clock.start(randomDelay());
-                }
-                if (containerCheck("Your Bazaar Orders") && clock.shouldFire()) {
+                // Close any open container
+                if (isContainerOpen() && clock.shouldFire()) {
                     minecraft.player.closeContainer();
                     clock.start(randomDelay());
                 }
 
-                // No container open - open bazaar with anything
+                // Open bazaar
                 if (!isContainerOpen() && clock.shouldFire()) {
                     openBazaar("tomato");
                 }
 
-                // Wait for Bazaar container, then click slot 50 to open main bazaar
-                if (containerCheck("tomato")) {
-                    clock.start(randomDelay());
-                }
+                // Wait for bazaar then click slot 50
                 if (containerCheck("tomato") && clock.shouldFire()) {
                     InventoryUtils.clickSlot(50, false);
                 }
 
-                // Now in main bazaar - click on the book in our inventory to go to its page
-                if (containerCheck("Bazaar")) {
-                    clock.start(randomDelay());
-                }
+                // Click on the book in inventory to go to its page
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
-                    // Find the book in our inventory and click it
                     List<Integer> invSlots = inventoryScanner.findInv(activeBook.name());
                     if (!invSlots.isEmpty()) {
                         InventoryUtils.clickSlot(invSlots.get(0), false);
                     }
                 }
 
-                // Now we should be on the book's page - click Sell Offer (slot 16)
-                if (containerCheck(activeBook.name())) {
-                    clock.start(randomDelay());
-                }
+                // Click Sell Offer (slot 16)
                 if (containerCheck(activeBook.name()) && clock.shouldFire()) {
                     InventoryUtils.clickSlot(16, false);
                 }
 
-                if (containerCheck("At what price are you selling")) {
-                    clock.start(randomDelay());
-                }
+                // Wait for price screen
                 if (containerCheck("At what price are you selling") && clock.shouldFire()) {
                     state = State.SET_PRICE;
                 }

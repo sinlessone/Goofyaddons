@@ -7,6 +7,7 @@ import com.goofy.goofyaddons.utils.*;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -41,6 +42,7 @@ public class AntiUnderBin implements Feature {
     private List<String> sellOrderName = new ArrayList<>();
     private Book activeBook = null;
     private double newPrice = 0;
+    private boolean closingAfterCancel = false;
 
     private long lastUpdated;
     private long checkInterval = 15000;
@@ -62,6 +64,7 @@ public class AntiUnderBin implements Feature {
         ourSellOrders.clear();
         booksToRelist.clear();
         sellOrderName.clear();
+        closingAfterCancel = false;
         scannedOrders = false;
     }
 
@@ -201,55 +204,60 @@ public class AntiUnderBin implements Feature {
                 List<Integer> cancelSlot = inventoryScanner.findContainer("Cancel Order");
                 if (!cancelSlot.isEmpty()) {
                     InventoryUtils.clickSlot(cancelSlot.get(0), false);
-                    debug("Cancelled order, moving to RELIST_NAVIGATION");
+                    closingAfterCancel = true;
                     state = State.RELIST_NAVIGATION;
                 }
             }
 
             case RELIST_NAVIGATION -> {
-                // Close any open container
-                if (isContainerOpen() && clock.shouldFire()) {
+                // Phase A: close the post-cancel screen, then open the bazaar
+                if (closingAfterCancel && isContainerOpen() && clock.shouldFire()) {
                     minecraft.player.closeContainer();
                     clock.start(randomDelay());
                 }
-
-                // Open bazaar
-                if (!isContainerOpen() && clock.shouldFire()) {
+                if (closingAfterCancel && !isContainerOpen() && clock.shouldFire()) {
                     openBazaar("tomato");
+                    closingAfterCancel = false;
+                    clock.start(randomDelay());
                 }
 
-                // Wait for bazaar then click slot 50
+                // Phase B: navigate to the main bazaar and click the book in our inventory
                 if (containerCheck("tomato") && clock.shouldFire()) {
                     InventoryUtils.clickSlot(50, false);
+                    clock.start(randomDelay());
                 }
 
-                // Click on the book in inventory to go to its page
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
-                    List<Integer> invSlots = new ArrayList<>();
                     for (String name : sellOrderName) {
-                        invSlots.addAll(inventoryScanner.findLoreInv(name));
-                    }
-                    if (!invSlots.isEmpty()) {
-                        InventoryUtils.clickSlot(invSlots.get(0), false);
+                        List<Integer> invSlots = inventoryScanner.findInv(name);
+                        if (!invSlots.isEmpty()) {
+                            InventoryUtils.clickSlot(invSlots.get(0), false);
+                            clock.start(randomDelay());
+                            break;
+                        }
                     }
                 }
 
-                // Click Sell Offer (slot 16)
+                // Book page is open; click Sell Offer (slot 16)
                 if (!sellOrderName.isEmpty() && containerCheck(sellOrderName.get(0)) && clock.shouldFire()) {
                     InventoryUtils.clickSlot(16, false);
+                    clock.start(randomDelay());
                 }
 
-                // Wait for price screen
+                // Price screen reached
                 if (containerCheck("At what price are you selling") && clock.shouldFire()) {
                     state = State.SET_PRICE;
                 }
             }
 
             case SET_PRICE -> {
-                debug("SET_PRICE: clicking slot 12");
-                InventoryUtils.clickSlot(12, false);
-                clock.start(randomDelay());
-                state = State.CONFIRM;
+                // Click the price button (slot 12) once the price screen is settled
+                if (containerCheck("At what price are you selling") && clock.shouldFire()) {
+                    debug("SET_PRICE: clicking slot 12");
+                    InventoryUtils.clickSlot(12, false);
+                    clock.start(randomDelay());
+                    state = State.CONFIRM;
+                }
             }
 
             case CONFIRM -> {
@@ -323,7 +331,11 @@ public class AntiUnderBin implements Feature {
             for (Book book : GoofyConfig.INSTANCE.books) {
                 if (name.contains(book.name())) {
                     ourSellOrders.put(book, price);
-                    sellOrderName.add(name.replace("SELL ", ""));
+                    // Capture the clean display name (without formatting) so we can locate the item later
+                    ItemStack item = minecraft.player.containerMenu.slots.get(slot).getItem();
+                    if (item.getCustomName() != null) {
+                        sellOrderName.add(item.getCustomName().getString().replace("SELL ", ""));
+                    }
                     break;
                 }
             }

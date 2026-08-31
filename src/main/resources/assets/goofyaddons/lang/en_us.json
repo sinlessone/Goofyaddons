@@ -2,5 +2,5 @@
   "key.categories.goofyaddons": "GoofyAddons",
   "key.goofyaddons.start": "Start Macro",
   "key.goofyaddons.stop": "Stop Macro",
-  "key.goofyaddons.antiunderbin": "Start Anti-Under-Bin"
+  "key.goofyaddons.antiunderbin": "Toggle Anti-Under-Bin"
 }

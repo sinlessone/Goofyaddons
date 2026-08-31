@@ -37,6 +37,7 @@ public class AntiUnderBin implements Feature {
     private SplittableRandom random = new SplittableRandom();
 
     private Map<Book, Double> ourSellOrders = new LinkedHashMap<>();
+    private Map<Book, String> sellOrderNames = new LinkedHashMap<>();
     private List<Book> booksToRelist = new ArrayList<>();
     private Book activeBook = null;
     private double newPrice = 0;
@@ -69,6 +70,7 @@ public class AntiUnderBin implements Feature {
         enabled = false;
         state = State.IDLE;
         clock.stop();
+        sellOrderNames.clear();
     }
 
     @Override
@@ -205,6 +207,13 @@ public class AntiUnderBin implements Feature {
             }
 
             case RELIST_NAVIGATION -> {
+                // Get the exact sell order name (e.g., "SELL Smarty Pants V")
+                String exactName = sellOrderNames.get(activeBook);
+                if (exactName == null) exactName = activeBook.name();
+                // Extract book name with tier (e.g., "Smarty Pants V" from "SELL Smarty Pants V")
+                String bookTierName = exactName.replace("SELL ", "").trim();
+                debug("RELIST_NAVIGATION: exactName=" + exactName + ", bookTierName=" + bookTierName);
+
                 // After cancelling, we're in "Your Bazaar Orders" - need to navigate to the book
                 if (containerCheck("Your Bazaar Orders")) {
                     clock.start(randomDelay());
@@ -215,9 +224,9 @@ public class AntiUnderBin implements Feature {
                     clock.start(randomDelay());
                 }
 
-                // No container open - open bazaar with book name
+                // No container open - open bazaar with book tier name
                 if (!isContainerOpen() && clock.shouldFire()) {
-                    openBazaar(activeBook.name());
+                    openBazaar(bookTierName);
                 }
 
                 // Wait for Bazaar container
@@ -225,11 +234,13 @@ public class AntiUnderBin implements Feature {
                     clock.start(randomDelay());
                 }
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
-                    // Find and click the book in the bazaar list
-                    List<Integer> slots = inventoryScanner.findContainer(activeBook.getRomanLevel(activeBook.level()));
+                    // Find and click the book in the bazaar list using the tier name
+                    List<Integer> slots = inventoryScanner.findContainer(bookTierName);
                     if (!slots.isEmpty()) {
                         debug("Found book in bazaar, clicking slot " + slots.get(0));
                         InventoryUtils.clickSlot(slots.get(0), false);
+                    } else {
+                        debug("Book not found in bazaar: " + bookTierName);
                     }
                 }
 
@@ -326,7 +337,8 @@ public class AntiUnderBin implements Feature {
             for (Book book : GoofyConfig.INSTANCE.books) {
                 if (name.contains(book.name())) {
                     ourSellOrders.put(book, price);
-                    debug("Found sell order: " + book.name() + " at price " + price);
+                    sellOrderNames.put(book, name);
+                    debug("Found sell order: " + book.name() + " at price " + price + ", full name: " + name);
                     break;
                 }
             }

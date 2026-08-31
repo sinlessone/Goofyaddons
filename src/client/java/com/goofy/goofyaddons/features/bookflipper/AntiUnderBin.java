@@ -199,15 +199,18 @@ public class AntiUnderBin implements Feature {
                 List<Integer> cancelSlot = inventoryScanner.findContainer("Cancel Order");
                 if (!cancelSlot.isEmpty()) {
                     InventoryUtils.clickSlot(cancelSlot.get(0), false);
+                    debug("Cancelled order, moving to RELIST_NAVIGATION");
                     state = State.RELIST_NAVIGATION;
                 }
             }
 
             case RELIST_NAVIGATION -> {
+                debug("RELIST_NAVIGATION: checking for book=" + activeBook.name() + ", container=" + (minecraft.screen != null ? minecraft.screen.getTitle().getString() : "null"));
                 if (containerCheck(activeBook.name())) {
                     clock.start(randomDelay());
                 }
                 if (containerCheck(activeBook.name()) && clock.shouldFire()) {
+                    debug("Book container found, clicking slot 16");
                     InventoryUtils.clickSlot(16, false);
                 }
 
@@ -215,20 +218,24 @@ public class AntiUnderBin implements Feature {
                     clock.start(randomDelay());
                 }
                 if (containerCheck("At what price are you selling") && clock.shouldFire()) {
+                    debug("Price screen found, moving to SET_PRICE");
                     state = State.SET_PRICE;
                 }
             }
 
             case SET_PRICE -> {
+                debug("SET_PRICE: clicking slot 12");
                 InventoryUtils.clickSlot(12, false);
                 state = State.CONFIRM;
             }
 
             case CONFIRM -> {
+                debug("CONFIRM: checking for Confirm screen");
                 if (containerCheck("Confirm")) {
                     clock.start(randomDelay());
                 }
                 if (containerCheck("Confirm") && clock.shouldFire()) {
+                    debug("Confirm screen found, clicking slot 13");
                     InventoryUtils.clickSlot(13, false);
                     ourSellOrders.put(activeBook, newPrice);
                     booksToRelist.remove(0);

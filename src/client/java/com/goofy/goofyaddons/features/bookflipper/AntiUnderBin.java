@@ -38,6 +38,7 @@ public class AntiUnderBin implements Feature {
 
     private Map<Book, Double> ourSellOrders = new LinkedHashMap<>();
     private List<Book> booksToRelist = new ArrayList<>();
+    private List<String> sellOrderName = new ArrayList<>();
     private Book activeBook = null;
     private double newPrice = 0;
 
@@ -60,6 +61,7 @@ public class AntiUnderBin implements Feature {
         state = State.IDLE;
         ourSellOrders.clear();
         booksToRelist.clear();
+        sellOrderName.clear();
         scannedOrders = false;
     }
 
@@ -223,14 +225,17 @@ public class AntiUnderBin implements Feature {
 
                 // Click on the book in inventory to go to its page
                 if (containerCheck("Bazaar") && clock.shouldFire()) {
-                    List<Integer> invSlots = inventoryScanner.findInv(activeBook.name());
+                    List<Integer> invSlots = new ArrayList<>();
+                    for (String name : sellOrderName) {
+                        invSlots.addAll(inventoryScanner.findLoreInv(name));
+                    }
                     if (!invSlots.isEmpty()) {
                         InventoryUtils.clickSlot(invSlots.get(0), false);
                     }
                 }
 
                 // Click Sell Offer (slot 16)
-                if (containerCheck(activeBook.name()) && clock.shouldFire()) {
+                if (!sellOrderName.isEmpty() && containerCheck(sellOrderName.get(0)) && clock.shouldFire()) {
                     InventoryUtils.clickSlot(16, false);
                 }
 
@@ -255,7 +260,10 @@ public class AntiUnderBin implements Feature {
                 if (containerCheck("Confirm") && clock.shouldFire()) {
                     debug("Confirm screen found, clicking slot 13");
                     InventoryUtils.clickSlot(13, false);
-                    ourSellOrders.put(activeBook, newPrice);
+                    if (!sellOrderName.isEmpty() && activeBook != null) {
+                        ourSellOrders.put(activeBook, newPrice);
+                    }
+                    sellOrderName.clear();
                     booksToRelist.remove(0);
                     activeBook = null;
                     state = State.IDLE;
@@ -315,6 +323,7 @@ public class AntiUnderBin implements Feature {
             for (Book book : GoofyConfig.INSTANCE.books) {
                 if (name.contains(book.name())) {
                     ourSellOrders.put(book, price);
+                    sellOrderName.add(name.replace("SELL ", ""));
                     break;
                 }
             }

@@ -7,6 +7,11 @@ import com.goofy.goofyaddons.utils.*;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemLore;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -286,6 +291,19 @@ public class AntiUnderBin implements Feature {
         for (int slot : sellSlots) {
             String name = inventoryScanner.getName(slot);
             double price = inventoryScanner.getUnitPrice(slot);
+
+            // Debug: print all lore lines for this sell order
+            AbstractContainerMenu menu = minecraft.player.containerMenu;
+            ItemStack itemStack = menu.slots.get(slot).getItem();
+            ItemLore itemLore = itemStack.get(DataComponents.LORE);
+            if (itemLore != null) {
+                debug("Lore for slot " + slot + ":");
+                for (Component line : itemLore.lines()) {
+                    debug("  " + line.getString());
+                }
+            }
+
+            debug("Price detected: " + price);
 
             for (Book book : GoofyConfig.INSTANCE.books) {
                 if (name.contains(book.name())) {
